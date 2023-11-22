@@ -1,4 +1,4 @@
-#include "../include/BinTree_make_image.h"
+#include "BinTree_make_image.h"
 
 static void
 BinTree_PrintNodes (const BinTree_node* const node,
@@ -61,45 +61,98 @@ BinTree_ConstructImage ()
 
 static void
 BinTree_PrintNodes (const BinTree_node* const node,
-                              FILE*             const image_file)
+                          FILE*         const image_file)
 {
-    static size_t  node_level = 1;
-    static size_t  node_index = 0;
-    size_t current_node_index = node_index;
-
     if (!node)
     {
-        fprintf (image_file,
-                 "        %zd [shape = \"Mrecord\", "
-                              "label = \"nil\"]\n", node_index);
-        ++node_index;
-        --node_level;
-
         return;
     }
 
-    fprintf (image_file, "        %zd [shape = \"Mrecord\", "
-                                      "label = \""
-                                      BinTree_OUTPUT_F
-                                      "\"];\n",
-                                      node_index, node->data);
+    fprintf (image_file, "        %lld  [shape = \"Mrecord\", "
+                                        "fillcolor = \"#FFFFFF\", "
+                                        "label = \"", (int64_t) node);
 
-    node_index++;
-    node_level++;
+    switch (node->data->data_type)
+    {
+        case NO_TYPE:
+        {
+            fprintf (image_file, "none\", color = \"#FF0000\"]\n");
 
-    fprintf (image_file, "        %zd -> %zd [color = \"#FF0000\","
-                                     "weight = %zd];\n",
-                                     current_node_index, node_index,
-                                     node_level);
-    BinTree_PrintNodes (node->left,  image_file);
+            break;
+        }
 
-    node_level++;
+        case NUMBER:
+        {
+            fprintf (image_file, BinTree_OUTPUT_F
+                                 "\", color = \"#00FF00\"];\n",
+                                 node->data->data_value
+                                       .numerical_value);
 
-    fprintf (image_file, "        %zd -> %zd [color = \"#FF0000\","
-                                     "weight = %zd];\n",
-                                     current_node_index, node_index,
-                                     node_level);
-    BinTree_PrintNodes (node->right, image_file);
+            break;
+        }
 
-    node_level--;
+        case OPERATION:
+        {
+            switch (node->data->data_value.operation_number)
+            {
+                case ADD:
+                {
+                    fputc ('+', image_file);
+                    break;
+                }
+
+                case SUB:
+                {
+                    fputc ('-', image_file);
+                    break;
+                }
+
+                case MUL:
+                {
+                    fputc ('*', image_file);
+                    break;
+                }
+
+                case DIV:
+                {
+                    fputc ('/', image_file);
+                    break;
+                }
+
+                case SIN:
+                {
+                    fprintf (image_file, "sin\n");
+                    break;
+                }
+
+                default:
+                {
+                    fputc ('0', image_file);
+                    break;
+                }
+            }
+
+            fprintf (image_file, "\", color = \"#0000FF\"];\n");
+
+            break;
+        }
+    }
+
+    if (node->left)
+    {
+        fprintf (image_file, "        %lld -> %lld [color = \"#FF0000\", "
+                                                   "weight = 10];\n",
+                                                   (int64_t) node,
+                                                   (int64_t) node->left);
+        BinTree_PrintNodes (node->left,  image_file);
+    }
+
+    if (node->right)
+    {
+        fprintf (image_file, "        %lld -> %lld [color = \"#FF0000\","
+                                                   "weight = 10];\n",
+                                                   (int64_t) node,
+                                                   (int64_t) node->right);
+        BinTree_PrintNodes (node->right, image_file);
+    }
 }
