@@ -92,6 +92,7 @@ struct BinTree
 
     variable*      var_table;
     var_index_type var_number;
+    var_index_type var_table_capacity;
 
     BinTree_error_type errors;
 };
@@ -115,5 +116,8 @@ BinTree_DestroyVarTable (BinTree* const tree);
 
 BinTree_error_type
 BinTree_Verify (BinTree* const tree);
+
+variable*
+ReallocVarTable (BinTree* const tree);
 
 #endif /* BINTREE_STRUCT */

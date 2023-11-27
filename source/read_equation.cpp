@@ -200,6 +200,12 @@ SetVariable (const char*    const var_name,
     assert (var_name);
     assert (tree);
 
+    if (tree->var_number == tree->var_table_capacity)
+    {
+        tree->var_table_capacity *= VAR_TABLE_CAPACITY_MULTIPLIER;
+        ReallocVarTable (tree);
+    }
+
     tree->var_table[tree->var_number].var_name =
         (char*) calloc (sizeof (char), sizeof (VAR_NAME_MAX_LEN));
     if (!tree->var_table[tree->var_number].var_name)

@@ -33,8 +33,9 @@ BinTree_Ctor       (BinTree* const tree,
     }
 
     tree->n_elem     = 0;
-    tree->var_number = 0;
     tree->errors     = 0;
+    tree->var_number = 0;
+    tree->var_table_capacity = INIT_VAR_NUMBER;
 
     return tree->errors;
 }
@@ -245,4 +246,17 @@ BinTree_CheckCycle (const BinTree_node* const node,
     }
 
     return NO_ERRORS;
+}
+
+variable*
+ReallocVarTable (BinTree* const tree)
+{
+    assert (tree);
+
+    tree->var_table =
+        (variable*) realloc (tree->var_table,
+                             (size_t) tree->var_table_capacity *
+                             sizeof (variable));
+
+    return tree->var_table;
 }

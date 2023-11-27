@@ -31,5 +31,6 @@ const char* const BinTree_IMAGE_FILE_NAME = "tree.png";
 const size_t VAR_NAME_MAX_LEN = 50;
 const size_t INIT_VAR_NUMBER  = 10;
 const var_index_type VAR_INDEX_POISON = -1;
+const var_index_type VAR_TABLE_CAPACITY_MULTIPLIER = 2;
 
 #endif /* BINTREE_CONFIG_H */
