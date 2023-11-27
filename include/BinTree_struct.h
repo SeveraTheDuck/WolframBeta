@@ -24,7 +24,7 @@
 /*
  * This define is for style purposes, because BinTree_Ctor is
  * an uppercased macro. It also gives an opportunity to call
- * for Dtor without aditional tree parameter.
+ * for Dtor without aditional tree->root parameter.
  */
 #define BINTREE_DTOR(tree)                                      \
         BinTree_DestroySubtree ((tree)->root, (tree));
@@ -39,7 +39,7 @@
     if (BinTree_Verify (tree))                                  \
     {                                                           \
         /* BinTree_Dump (tree); */                              \
-        fprintf (stderr, "%llu", (tree)->errors);               \
+        fprintf (stderr, "ERROR %llu", (tree)->errors);         \
         exit ((int32_t) (tree)->errors);                        \
     }
 
@@ -68,10 +68,9 @@ enum BinTree_errors
 
 struct BinTree_node
 {
-    BinTree_data_type* data;
-    BinTree_node*      left;
-    BinTree_node*      right;
-    BinTree_node*      parent;
+    BinTree_data_type data;
+    BinTree_node*     left;
+    BinTree_node*     right;
 };
 
 struct BinTree
@@ -92,11 +91,10 @@ BinTree_Ctor       (BinTree* const tree,
                     BINTREE_CTOR_RECIVE_INFO);
 
 BinTree_node*
-BinTree_CtorNode   (BinTree_data_type*  data,
-                    BinTree_node* const left,
-                    BinTree_node* const right,
-                    BinTree_node* const parent,
-                    BinTree*      const tree);
+BinTree_CtorNode   (BinTree_data_type* const data,
+                    BinTree_node*      const left,
+                    BinTree_node*      const right,
+                    BinTree*           const tree);
 
 BinTree_error_type
 BinTree_DestroySubtree (BinTree_node* const node,

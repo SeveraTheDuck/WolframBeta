@@ -1,5 +1,14 @@
 #include "BinTree_struct.h"
 
+static BinTree_error_type
+BinTree_CheckCycle (const BinTree_node* const node,
+                          BinTree*      const tree,
+                          uint32_t*     const counted_n_elements);
+
+static BinTree_error_type
+BinTree_CheckTreads (const BinTree_node* const node,
+                           BinTree*      const tree);
+
 BinTree_error_type
 BinTree_Ctor       (BinTree* const tree,
                     BINTREE_CTOR_RECIVE_INFO)
@@ -25,7 +34,6 @@ BinTree_node*
 BinTree_CtorNode   (BinTree_data_type* const data,
                     BinTree_node*      const left,
                     BinTree_node*      const right,
-                    BinTree_node*      const parent,
                     BinTree*           const tree)
 {
     if (!tree)
@@ -45,10 +53,10 @@ BinTree_CtorNode   (BinTree_data_type* const data,
         return nullptr;
     }
 
-    new_node->data   = data;
+    memcpy (&new_node->data, data, sizeof (BinTree_data_type));
+
     new_node->left   = left;
     new_node->right  = right;
-    new_node->parent = parent;
 
     tree->n_elem++;
 
@@ -73,34 +81,12 @@ BinTree_DestroySubtree (BinTree_node* const node,
     BinTree_DestroySubtree (node->left,  tree);
     BinTree_DestroySubtree (node->right, tree);
 
-    node->data->data_type = NO_TYPE;
-    node->data->data_value.numerical_value = BinTree_POISON;
+    node->data.data_type = NO_TYPE;
+    node->data.data_value.num_value = BinTree_POISON;
     node->left  = nullptr;
     node->right = nullptr;
 
     tree->n_elem--;
-
-    if (node->parent)
-    {
-        if (node == node->parent->left)
-        {
-            node->parent->left  = nullptr;
-        }
-
-        else if (node == node->parent->right)
-        {
-            node->parent->right = nullptr;
-        }
-
-        else
-        {
-            fprintf (stderr, "Wrong parent [%p] of node: [%p]",
-                              node->parent, node);
-            tree->errors |= BINTREE_WRONG_PARENT;
-        }
-
-        node->parent = nullptr;
-    }
 
     free (node);
 
@@ -116,20 +102,21 @@ BinTree_Verify (BinTree* const tree)
     }
 
     uint32_t counted_n_elements = 0;
-    CheckTreeCycle (tree->root, tree, &counted_n_elements);
+    BinTree_CheckCycle (tree->root, tree, &counted_n_elements);
 
     if (counted_n_elements != tree->n_elem && tree->n_elem > 0)
     {
         tree->errors |= BINTREE_CYCLE_FOUND;
     }
 
+    BinTree_CheckTreads (tree->root, tree);
+
     return tree->errors;
 }
 
-BinTree_error_type
-CheckTreeCycle (const BinTree_node* const node,
-                      BinTree*      const tree,
-                      uint32_t*     const counted_n_elements)
+static BinTree_error_type
+BinTree_CheckTreads (const BinTree_node* const node,
+                           BinTree*      const tree)
 {
     if (!tree)
     {
@@ -141,6 +128,70 @@ CheckTreeCycle (const BinTree_node* const node,
         return BINTREE_ROOT_NULLPTR;
     }
 
+    if (node->data.data_type == NUMBER &&
+       (node->left != nullptr || node->right != nullptr))
+    {
+        tree->errors |= WOLFRAM_NUMBER_WRONG_CHILDREN;
+    }
+
+    if (node->data.data_type == OPERATION &&
+        node->left == nullptr)
+    {
+        switch (node->data.data_value.op_code)
+        {
+            /*
+             * No breaks used in ADD, SUB and MUL because
+             * the behavior is the same for all of them,
+             * so switch can move though all of them.
+             * There are few of them, so it is not slow.
+             */
+            case ADD:
+            case SUB:
+            case MUL:
+            case DIV:
+                tree->errors |= WOLFRAM_BINARY_OPERATION_WRONG_CHILDREN;
+                break;
+        }
+    }
+
+    if (node->data.data_type == OPERATION &&
+        node->right == nullptr)
+    {
+        switch (node->data.data_value.op_code)
+        {
+            /*
+             * Same as above
+             */
+            case ADD:
+            case SUB:
+            case MUL:
+            case DIV:
+                tree->errors |= WOLFRAM_BINARY_OPERATION_WRONG_CHILDREN;
+                break;
+            default:
+                tree->errors |= WOLFRAM_UNARY_OPERATION_WRONG_CHILDREN;
+                break;
+        }
+    }
+
+    if (node->left)
+        BinTree_CheckTreads (node->left,  tree);
+    if (node->right)
+        BinTree_CheckTreads (node->right, tree);
+
+    return tree->errors;
+}
+
+static BinTree_error_type
+BinTree_CheckCycle (const BinTree_node* const node,
+                          BinTree*      const tree,
+                          uint32_t*     const counted_n_elements)
+{
+    if (!tree)
+    {
+        return BINTREE_STRUCT_NULLPTR;
+    }
+
     if (!node)
     {
         tree->errors |= BINTREE_NODE_NULLPTR;
@@ -150,43 +201,9 @@ CheckTreeCycle (const BinTree_node* const node,
     (*counted_n_elements)++;
 
     if (node->left)
-    {
-        CheckTreeCycle (node->left,  tree, counted_n_elements);
-    }
+        BinTree_CheckCycle (node->left,  tree, counted_n_elements);
     if (node->right)
-    {
-        CheckTreeCycle (node->right, tree, counted_n_elements);
-    }
-
-    if (node->data->data_type == NUMBER &&
-       (node->left != nullptr || node->right != nullptr))
-    {
-        tree->errors |= WOLFRAM_NUMBER_WRONG_CHILDREN;
-    }
-
-    if (node->data->data_type == OPERATION &&
-        node->left == nullptr)
-    {
-        // unary operations hardcode
-        if (node->data->data_value.operation_number == SIN)
-        {
-            tree->errors |= WOLFRAM_UNARY_OPERATION_WRONG_CHILDREN;
-        }
-        else
-        {
-            tree->errors |= WOLFRAM_BINARY_OPERATION_WRONG_CHILDREN;
-        }
-    }
-
-    if (node->data->data_type == OPERATION &&
-        node->right == nullptr)
-    {
-        // unary operations hardcode
-        if (node->data->data_value.operation_number != SIN)
-        {
-            tree->errors |= WOLFRAM_BINARY_OPERATION_WRONG_CHILDREN;
-        }
-    }
+        BinTree_CheckCycle (node->right, tree, counted_n_elements);
 
     if (*counted_n_elements != tree->n_elem)
     {

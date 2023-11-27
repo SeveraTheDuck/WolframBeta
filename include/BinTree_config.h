@@ -3,18 +3,22 @@
 
 #include "wolfram_config.h"
 
+typedef uint8_t op_code_type;
+
 union data_value
 {
-    double      numerical_value;
-    operation   operation_number;
-    char* const variable_name;
+    double       num_value;
+    op_code_type op_code;
+    char* const  var_name;
 };
 
-typedef struct data
+struct data
 {
     data_type  data_type;
     data_value data_value;
-} BinTree_data_type;
+};
+
+typedef data BinTree_data_type;
 
 #define BinTree_OUTPUT_F "%lg"
 

@@ -72,7 +72,7 @@ BinTree_PrintNodes (const BinTree_node* const node,
                                         "fillcolor = \"#FFFFFF\", "
                                         "label = \"", (int64_t) node);
 
-    switch (node->data->data_type)
+    switch (node->data.data_type)
     {
         case NO_TYPE:
         {
@@ -85,15 +85,15 @@ BinTree_PrintNodes (const BinTree_node* const node,
         {
             fprintf (image_file, BinTree_OUTPUT_F
                                  "\", color = \"#00FF00\"];\n",
-                                 node->data->data_value
-                                       .numerical_value);
+                                 node->data.data_value
+                                           .num_value);
 
             break;
         }
 
         case OPERATION:
         {
-            switch (node->data->data_value.operation_number)
+            switch (node->data.data_value.op_code)
             {
                 case ADD:
                 {
@@ -139,7 +139,7 @@ BinTree_PrintNodes (const BinTree_node* const node,
 
         case VARIABLE:
         {
-            fputs (node->data->data_value.variable_name, image_file);
+            fputs (node->data.data_value.var_name, image_file);
             fputs ("\", color = \"#00FFFF\"];\n", image_file);
         }
     }

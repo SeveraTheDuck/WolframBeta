@@ -1,9 +1,10 @@
 #include "wolfram.h"
 
 static double
-DoOperation (const double left_part, const double right_part,
-             const operation operation_number,
-             BinTree* const tree);
+DoOperation (const double       left_part,
+             const double       right_part,
+             const op_code_type operation_number,
+             BinTree* const     tree);
 
 static double
 EvaluateChecked (const BinTree_node* const node,
@@ -28,12 +29,12 @@ EvaluateChecked (const BinTree_node* const node,
         return NAN;
     }
 
-    if (node->data->data_type == NUMBER)
+    if (node->data.data_type == NUMBER)
     {
-        return node->data->data_value.numerical_value;
+        return node->data.data_value.num_value;
     }
 
-    if (node->data->data_type == VARIABLE)
+    if (node->data.data_type == VARIABLE)
     {
         return x_value;
     }
@@ -41,10 +42,10 @@ EvaluateChecked (const BinTree_node* const node,
     double left_part  = EvaluateChecked (node->left,  tree, x_value);
     double right_part = EvaluateChecked (node->right, tree, x_value);
 
-    if (node->data->data_type == OPERATION)
+    if (node->data.data_type == OPERATION)
     {
         return DoOperation (left_part, right_part,
-                            node->data->data_value.operation_number,
+                            node->data.data_value.op_code,
                             tree);
     }
 
@@ -56,9 +57,10 @@ EvaluateChecked (const BinTree_node* const node,
 }
 
 static double
-DoOperation (const double left_part, const double right_part,
-             const operation operation_number,
-             BinTree* const tree)
+DoOperation (const double       left_part,
+             const double       right_part,
+             const op_code_type operation_number,
+             BinTree* const     tree)
 {
     switch (operation_number)
     {
@@ -70,7 +72,7 @@ DoOperation (const double left_part, const double right_part,
 
         case DIV: return left_part / right_part;
 
-        case SIN: return sin (left_part);
+        case SIN: return sin (right_part);
 
         default:
         {
