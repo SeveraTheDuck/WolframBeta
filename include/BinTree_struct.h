@@ -1,9 +1,10 @@
-#ifndef BIN_TREE_STRUCT
-#define BIN_TREE_STRUCT
+#ifndef BINTREE_STRUCT
+#define BINTREE_STRUCT
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "BinTree_config.h"
 
@@ -27,7 +28,8 @@
  * for Dtor without aditional tree->root parameter.
  */
 #define BINTREE_DTOR(tree)                                      \
-        BinTree_DestroySubtree ((tree)->root, (tree));
+        BinTree_DestroyVarTable ((tree));                       \
+        BinTree_DestroySubtree  ((tree)->root, (tree));
 
 #define BinTree_VerifyAndDump(tree)                             \
     if (!tree)                                                  \
@@ -43,18 +45,17 @@
         exit ((int32_t) (tree)->errors);                        \
     }
 
-
 typedef uint64_t BinTree_error_type;
 
 enum BinTree_errors
 {
-    NO_ERRORS      = 0,
+    NO_ERRORS = 0,
 
-    BINTREE_STRUCT_NULLPTR = 1 << 1,
-    BINTREE_ROOT_NULLPTR   = 1 << 2,
-    BINTREE_NODE_NULLPTR   = 1 << 3,
-    BINTREE_CYCLE_FOUND    = 1 << 4,
-    BINTREE_WRONG_PARENT   = 1 << 5,
+    BINTREE_STRUCT_NULLPTR    = 1 << 1,
+    BINTREE_ROOT_NULLPTR      = 1 << 2,
+    BINTREE_NODE_NULLPTR      = 1 << 3,
+    BINTREE_VAR_TABLE_NULLPTR = 1 << 4,
+    BINTREE_CYCLE_FOUND       = 1 << 5,
 
     WOLFRAM_WRONG_OPERATION_CODE            = 1 <<  6,
     WOLFRAM_WRONG_DATA_TYPE                 = 1 <<  7,
@@ -73,6 +74,12 @@ struct BinTree_node
     BinTree_node*     right;
 };
 
+struct variable
+{
+    char*  var_name;
+    double var_value;
+};
+
 struct BinTree
 {
     BinTree_node* root;
@@ -82,6 +89,9 @@ struct BinTree
     const char* init_name;
     const char* init_file;
     const char* init_func;
+
+    variable*      var_table;
+    var_index_type var_number;
 
     BinTree_error_type errors;
 };
@@ -101,11 +111,9 @@ BinTree_DestroySubtree (BinTree_node* const node,
                         BinTree*      const tree);
 
 BinTree_error_type
-BinTree_Verify (BinTree* const tree);
+BinTree_DestroyVarTable (BinTree* const tree);
 
 BinTree_error_type
-CheckTreeCycle (const BinTree_node* const node,
-                      BinTree*      const tree,
-                      uint32_t*     const counted_n_elements);
+BinTree_Verify (BinTree* const tree);
 
-#endif /* BIN_TREE_STRUCT */
+#endif /* BINTREE_STRUCT */

@@ -8,21 +8,43 @@ DoOperation (const double       left_part,
 
 static double
 EvaluateChecked (const BinTree_node* const node,
-                       BinTree*      const tree,
-                 const double              x_value);
+                       BinTree*      const tree);
 
 double
-Evaluate (BinTree* const tree, const double x_value)
+Evaluate (BinTree* const tree)
 {
     BinTree_VerifyAndDump (tree);
 
-    return EvaluateChecked (tree->root, tree, x_value);
+    FillVariables (tree);
+
+    return EvaluateChecked (tree->root, tree);
+}
+
+void
+FillVariables (BinTree* const tree)
+{
+    if (!tree)
+    {
+        fprintf (stderr, "Invalid tree struct pointer\n");
+        return;
+    }
+
+    puts ("Please, give values to variables:");
+
+    for (var_index_type var_index = 0;
+                        var_index < tree->var_number;
+                        var_index++)
+    {
+        printf  ("%s = ", tree->var_table[var_index].var_name);
+        scanf   ("%lg",  &tree->var_table[var_index].var_value);
+    }
+
+    putchar ('\n');
 }
 
 static double
 EvaluateChecked (const BinTree_node* const node,
-                       BinTree*      const tree,
-                 const double              x_value)
+                       BinTree*      const tree)
 {
     if (!node)
     {
@@ -36,11 +58,12 @@ EvaluateChecked (const BinTree_node* const node,
 
     if (node->data.data_type == VARIABLE)
     {
-        return x_value;
+        return tree->var_table[node->data.data_value.var_index]
+                    .var_value;
     }
 
-    double left_part  = EvaluateChecked (node->left,  tree, x_value);
-    double right_part = EvaluateChecked (node->right, tree, x_value);
+    double left_part  = EvaluateChecked (node->left,  tree);
+    double right_part = EvaluateChecked (node->right, tree);
 
     if (node->data.data_type == OPERATION)
     {
@@ -71,6 +94,8 @@ DoOperation (const double       left_part,
         case MUL: return left_part * right_part;
 
         case DIV: return left_part / right_part;
+
+        case POW: return pow (left_part, right_part);
 
         case SIN: return sin (right_part);
 

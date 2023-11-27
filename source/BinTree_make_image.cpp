@@ -2,6 +2,7 @@
 
 static void
 BinTree_PrintNodes (const BinTree_node* const node,
+                    const BinTree*      const tree,
                           FILE*         const image_file);
 
 static void
@@ -26,7 +27,7 @@ BinTree_MakeTreeImage (const BinTree* const tree)
                          "        style   = filled;\n"
                          "        label   = \"My bin tree\";\n\n");
 
-    BinTree_PrintNodes (tree->root, image_file);
+    BinTree_PrintNodes (tree->root, tree, image_file);
 
     fprintf (image_file, "    }\n}");
 
@@ -61,6 +62,7 @@ BinTree_ConstructImage ()
 
 static void
 BinTree_PrintNodes (const BinTree_node* const node,
+                    const BinTree*      const tree,
                           FILE*         const image_file)
 {
     if (!node)
@@ -93,43 +95,16 @@ BinTree_PrintNodes (const BinTree_node* const node,
 
         case OPERATION:
         {
-            switch (node->data.data_value.op_code)
+            if (node->data.data_value.op_code < NUM_OF_OP)
             {
-                case ADD:
-                {
-                    fputc ('+', image_file);
-                    break;
-                }
-
-                case SUB:
-                {
-                    fputc ('-', image_file);
-                    break;
-                }
-
-                case MUL:
-                {
-                    fputc ('*', image_file);
-                    break;
-                }
-
-                case DIV:
-                {
-                    fputc ('/', image_file);
-                    break;
-                }
-
-                case SIN:
-                {
-                    fprintf (image_file, "sin");
-                    break;
-                }
-
-                default:
-                {
-                    fputc ('0', image_file);
-                    break;
-                }
+                fputs (operations_array [node->data.data_value.op_code],
+                       image_file);
+            }
+            else
+            {
+                fputs ("none", image_file);
+                fprintf (stderr, "Unknown op_code %hhu\n",
+                         node->data.data_value.op_code);
             }
 
             fprintf (image_file, "\", color = \"#0000FF\"];\n");
@@ -139,7 +114,18 @@ BinTree_PrintNodes (const BinTree_node* const node,
 
         case VARIABLE:
         {
-            fputs (node->data.data_value.var_name, image_file);
+            if (node->data.data_value.var_index < tree->var_number)
+            {
+                fputs (tree->var_table
+                       [node->data.data_value.var_index].var_name,
+                       image_file);
+            }
+            else
+            {
+                fputs ("Unknown variable", image_file);
+                fprintf (stderr, "Unknown variable\n");
+            }
+
             fputs ("\", color = \"#00FFFF\"];\n", image_file);
         }
     }
@@ -150,7 +136,7 @@ BinTree_PrintNodes (const BinTree_node* const node,
                                                    "weight = 10];\n",
                                                    (int64_t) node,
                                                    (int64_t) node->left);
-        BinTree_PrintNodes (node->left,  image_file);
+        BinTree_PrintNodes (node->left, tree, image_file);
     }
 
     if (node->right)
@@ -159,6 +145,6 @@ BinTree_PrintNodes (const BinTree_node* const node,
                                                    "weight = 10];\n",
                                                    (int64_t) node,
                                                    (int64_t) node->right);
-        BinTree_PrintNodes (node->right, image_file);
+        BinTree_PrintNodes (node->right, tree, image_file);
     }
 }

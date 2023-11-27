@@ -6,6 +6,9 @@
 #include "wolfram_config.h"
 
 double
-Evaluate (BinTree* const tree, const double x_value);
+Evaluate (BinTree* const tree);
+
+void
+FillVariables (BinTree* const tree);
 
 #endif /* WOLFRAM_H */

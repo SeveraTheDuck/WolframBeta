@@ -1,8 +1,6 @@
 #ifndef WOLFRAM_CONFIG_H
 #define WOLFRAM_CONFIG_H
 
-const size_t VAR_NAME_MAX_LEN = 50;
-
 enum data_type
 {
     NO_TYPE   = 0x0,
@@ -17,7 +15,7 @@ enum binary_operation
     SUB,
     MUL,
     DIV,
-    // POW = 0x4,
+    POW,
 
     NUM_OF_BIN_OP
 };
@@ -32,6 +30,6 @@ enum unary_operation
 const size_t NUM_OF_OP = NUM_OF_BIN_OP + NUM_OF_UN_OP;
 
 const char* const operations_array [NUM_OF_OP] =
-    {"+", "-", "*", "/", "SIN"};
+    {"+", "-", "*", "/", "^", "SIN"};
 
 #endif /* WOLFRAM_CONFIG_H */

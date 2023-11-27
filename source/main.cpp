@@ -12,7 +12,7 @@ int32_t main (const int32_t /*argc*/, const char** argv)
 
     BinTree_MakeTreeImage (&tree);
 
-    printf (BinTree_OUTPUT_F, Evaluate(&tree, 0));
+    printf (BinTree_OUTPUT_F, Evaluate(&tree));
 
     BINTREE_DTOR (&tree);
 

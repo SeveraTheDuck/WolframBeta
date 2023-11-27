@@ -6,8 +6,8 @@ BinTree_CheckCycle (const BinTree_node* const node,
                           uint32_t*     const counted_n_elements);
 
 static BinTree_error_type
-BinTree_CheckTreads (const BinTree_node* const node,
-                           BinTree*      const tree);
+BinTree_CheckThreads (const BinTree_node* const node,
+                            BinTree*      const tree);
 
 BinTree_error_type
 BinTree_Ctor       (BinTree* const tree,
@@ -15,7 +15,7 @@ BinTree_Ctor       (BinTree* const tree,
 {
     if (!tree)
     {
-        fprintf (stderr, "Invalid pointer to tree struct: [%p]", tree);
+        fprintf (stderr, "Invalid tree struct pointer");
         return BINTREE_STRUCT_NULLPTR;
     }
 
@@ -24,8 +24,17 @@ BinTree_Ctor       (BinTree* const tree,
     tree->init_file = init_file;
     tree->init_func = init_func;
 
-    tree->n_elem = 0;
-    tree->errors = 0;
+    tree->var_table =
+        (variable*) calloc (INIT_VAR_NUMBER, sizeof (variable));
+    if (!tree->var_table)
+    {
+        perror ("var_table allocation error");
+        tree->errors |= BINTREE_VAR_TABLE_NULLPTR;
+    }
+
+    tree->n_elem     = 0;
+    tree->var_number = 0;
+    tree->errors     = 0;
 
     return tree->errors;
 }
@@ -38,7 +47,7 @@ BinTree_CtorNode   (BinTree_data_type* const data,
 {
     if (!tree)
     {
-        fprintf (stderr, "Invalid pointer to tree struct: [%p]", tree);
+        fprintf (stderr, "Invalid tree struct pointer");
         return nullptr;
     }
 
@@ -55,8 +64,8 @@ BinTree_CtorNode   (BinTree_data_type* const data,
 
     memcpy (&new_node->data, data, sizeof (BinTree_data_type));
 
-    new_node->left   = left;
-    new_node->right  = right;
+    new_node->left  = left;
+    new_node->right = right;
 
     tree->n_elem++;
 
@@ -69,7 +78,7 @@ BinTree_DestroySubtree (BinTree_node* const node,
 {
     if (!tree)
     {
-        fprintf (stderr, "Invalid pointer to tree struct: [%p]", tree);
+        fprintf (stderr, "Invalid tree struct pointer");
         return BINTREE_STRUCT_NULLPTR;
     }
 
@@ -94,6 +103,26 @@ BinTree_DestroySubtree (BinTree_node* const node,
 }
 
 BinTree_error_type
+BinTree_DestroyVarTable (BinTree* const tree)
+{
+    if (!tree)
+    {
+        fprintf (stderr, "Invalid tree struct pointer");
+        return BINTREE_STRUCT_NULLPTR;
+    }
+
+    for (var_index_type var_index = 0;
+                        var_index < tree->var_number;
+                        var_index++)
+    {
+        tree->var_table[var_index].var_value = BinTree_POISON;
+        free (tree->var_table[var_index].var_name);
+    }
+
+    return NO_ERRORS;
+}
+
+BinTree_error_type
 BinTree_Verify (BinTree* const tree)
 {
     if (!tree)
@@ -109,19 +138,16 @@ BinTree_Verify (BinTree* const tree)
         tree->errors |= BINTREE_CYCLE_FOUND;
     }
 
-    BinTree_CheckTreads (tree->root, tree);
+    BinTree_CheckThreads (tree->root, tree);
 
     return tree->errors;
 }
 
 static BinTree_error_type
-BinTree_CheckTreads (const BinTree_node* const node,
-                           BinTree*      const tree)
+BinTree_CheckThreads (const BinTree_node* const node,
+                            BinTree*      const tree)
 {
-    if (!tree)
-    {
-        return BINTREE_STRUCT_NULLPTR;
-    }
+    assert (tree);
 
     if (!tree->root)
     {
@@ -142,13 +168,18 @@ BinTree_CheckTreads (const BinTree_node* const node,
             /*
              * No breaks used in ADD, SUB and MUL because
              * the behavior is the same for all of them,
-             * so switch can move though all of them.
+             * so switch can move through them.
              * There are few of them, so it is not slow.
              */
             case ADD:
+                [[fallthrough]];
             case SUB:
+                [[fallthrough]];
             case MUL:
+                [[fallthrough]];
             case DIV:
+                [[fallthrough]];
+            case POW:
                 tree->errors |= WOLFRAM_BINARY_OPERATION_WRONG_CHILDREN;
                 break;
         }
@@ -163,11 +194,17 @@ BinTree_CheckTreads (const BinTree_node* const node,
              * Same as above
              */
             case ADD:
+                [[fallthrough]];
             case SUB:
+                [[fallthrough]];
             case MUL:
+                [[fallthrough]];
             case DIV:
+                [[fallthrough]];
+            case POW:
                 tree->errors |= WOLFRAM_BINARY_OPERATION_WRONG_CHILDREN;
                 break;
+
             default:
                 tree->errors |= WOLFRAM_UNARY_OPERATION_WRONG_CHILDREN;
                 break;
@@ -175,9 +212,9 @@ BinTree_CheckTreads (const BinTree_node* const node,
     }
 
     if (node->left)
-        BinTree_CheckTreads (node->left,  tree);
+        BinTree_CheckThreads (node->left,  tree);
     if (node->right)
-        BinTree_CheckTreads (node->right, tree);
+        BinTree_CheckThreads (node->right, tree);
 
     return tree->errors;
 }
@@ -187,10 +224,7 @@ BinTree_CheckCycle (const BinTree_node* const node,
                           BinTree*      const tree,
                           uint32_t*     const counted_n_elements)
 {
-    if (!tree)
-    {
-        return BINTREE_STRUCT_NULLPTR;
-    }
+    assert (tree);
 
     if (!node)
     {
