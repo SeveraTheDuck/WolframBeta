@@ -41,10 +41,11 @@ BinTree_Ctor       (BinTree* const tree,
 }
 
 BinTree_node*
-BinTree_CtorNode   (BinTree_data_type* const data,
-                    BinTree_node*      const left,
-                    BinTree_node*      const right,
-                    BinTree*           const tree)
+BinTree_CtorNode   (const data_type data_type,
+                    const double    data_value,
+                    BinTree_node* const left,
+                    BinTree_node* const right,
+                    BinTree*      const tree)
 {
     if (!tree)
     {
@@ -63,7 +64,30 @@ BinTree_CtorNode   (BinTree_data_type* const data,
         return nullptr;
     }
 
-    memcpy (&new_node->data, data, sizeof (BinTree_data_type));
+    new_node->data.data_type = data_type;
+
+    if (data_type == NUMBER)
+    {
+        new_node->data.data_value.num_value = data_value;
+    }
+    else if (data_type == OPERATION)
+    {
+        new_node->data.data_value.op_code =
+            (op_code_type) data_value;
+    }
+    else if (data_type == VARIABLE)
+    {
+        new_node->data.data_value.var_index =
+            (var_index_type) data_value;
+    }
+    else
+    {
+        new_node->data.data_type = NO_TYPE;
+        fprintf (stderr, "Unknown type of node\n");
+
+        free (new_node);
+        return nullptr;
+    }
 
     new_node->left  = left;
     new_node->right = right;
@@ -71,6 +95,40 @@ BinTree_CtorNode   (BinTree_data_type* const data,
     tree->n_elem++;
 
     return new_node;
+}
+
+BinTree_node*
+MakeNodeByData (BinTree_node*      const node_left,
+                BinTree_data_type* const node_data,
+                BinTree_node*      const node_right,
+                BinTree*           const tree)
+{
+    assert (node_data);
+    assert (tree);
+
+    if (node_data->data_type == NUMBER)
+    {
+        return BinTree_CtorNode (NUMBER, node_data->data_value.num_value,
+                                 node_left, node_right, tree);
+    }
+
+    else if (node_data->data_type == OPERATION)
+    {
+        return BinTree_CtorNode (OPERATION, node_data->data_value.op_code,
+                                 node_left, node_right, tree);
+    }
+
+    else if (node_data->data_type == VARIABLE)
+    {
+        return BinTree_CtorNode (VARIABLE, node_data->data_value.var_index,
+                                 node_left, node_right, tree);
+    }
+
+    else
+    {
+        fprintf (stderr, "Wrong data type\n");
+        return nullptr;
+    }
 }
 
 BinTree_error_type

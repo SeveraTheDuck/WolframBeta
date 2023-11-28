@@ -102,10 +102,21 @@ BinTree_Ctor       (BinTree* const tree,
                     BINTREE_CTOR_RECIVE_INFO);
 
 BinTree_node*
-BinTree_CtorNode   (BinTree_data_type* const data,
+BinTree_CtorNode   (const data_type data_type,
+                    const double    data_value,
                     BinTree_node*      const left,
                     BinTree_node*      const right,
                     BinTree*           const tree);
+
+/*
+ * This struct creates a node by data.
+ * It doesn't require data_type from user, as BinTree_CtorNode does.
+ */
+BinTree_node*
+MakeNodeByData (BinTree_node*      const node_left,
+                BinTree_data_type* const node_data,
+                BinTree_node*      const node_right,
+                BinTree*           const tree);
 
 BinTree_error_type
 BinTree_DestroySubtree (BinTree_node* const node,

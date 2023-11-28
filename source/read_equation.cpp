@@ -91,7 +91,7 @@ ReadNode (const file_input* const input_parced,
     }
 
     BinTree_node* new_node =
-        BinTree_CtorNode (node_data, node_left, node_right, tree);
+        MakeNodeByData (node_left, node_data, node_right, tree);
 
     free (node_data);
 
