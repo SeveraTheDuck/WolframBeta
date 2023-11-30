@@ -67,6 +67,19 @@ enum BinTree_errors
     NUMBER_OF_POSSIBLE_ERRORS = 11
 };
 
+/// @brief Used for derivatives, if several variables disapear during differentiation.
+enum variable_status
+{
+    DISABLED = 0,
+    ENABLED
+};
+
+enum is_simplified
+{
+    NOT_SIMPLIFIED = 0,
+    SIMPLIFIED
+};
+
 struct BinTree_node
 {
     BinTree_data_type data;
@@ -76,6 +89,8 @@ struct BinTree_node
 
 struct variable
 {
+    variable_status status;
+
     char*  var_name;
     double var_value;
 };
@@ -94,6 +109,8 @@ struct BinTree
     var_index_type var_number;
     var_index_type var_table_capacity;
 
+    is_simplified simplify_status;
+
     BinTree_error_type errors;
 };
 
@@ -104,9 +121,9 @@ BinTree_Ctor       (BinTree* const tree,
 BinTree_node*
 BinTree_CtorNode   (const data_type data_type,
                     const double    data_value,
-                    BinTree_node*      const left,
-                    BinTree_node*      const right,
-                    BinTree*           const tree);
+                    BinTree_node* const left,
+                    BinTree_node* const right,
+                    BinTree*      const tree);
 
 /*
  * This struct creates a node by data.

@@ -10,6 +10,7 @@ int32_t main (const int32_t /*argc*/, const char** argv)
 
 // check reading functions
     ReadTree (argv [1], &tree);
+    SimplifyExpression (&tree);
 
     BinTree_MakeTreeImage (&tree);
     printf (BinTree_OUTPUT_F "\n", Evaluate(&tree));
@@ -18,10 +19,10 @@ int32_t main (const int32_t /*argc*/, const char** argv)
     BinTree d_tree = {};
     BINTREE_CTOR (&d_tree);
 
-    DifferentiateTree (&tree, &d_tree, "x");
+    // DifferentiateExpression (&tree, &d_tree, "x");
 
-    BinTree_MakeTreeImage (&d_tree);
-    printf (BinTree_OUTPUT_F "\n", Evaluate(&d_tree));
+    // BinTree_MakeTreeImage (&d_tree);
+    // printf (BinTree_OUTPUT_F "\n", Evaluate(&d_tree));
 
 // dtor
     BINTREE_DTOR (&tree);

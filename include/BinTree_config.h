@@ -28,9 +28,10 @@ const double BinTree_POISON = -3.1415926;
 const char* const BinTree_IMAGE_CONSTRUCT_FILE_NAME = "image_construct.dot";
 const char* const BinTree_IMAGE_FILE_NAME = "tree.png";
 
+const size_t OP_NAME_MAX_LEN  = 20;
 const size_t VAR_NAME_MAX_LEN = 50;
 const size_t INIT_VAR_NUMBER  = 10;
-const var_index_type VAR_INDEX_POISON = -1;
 const var_index_type VAR_TABLE_CAPACITY_MULTIPLIER = 2;
+const var_index_type VAR_INDEX_POISON = -1;
 
 #endif /* BINTREE_CONFIG_H */

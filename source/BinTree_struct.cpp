@@ -55,7 +55,6 @@ BinTree_CtorNode   (const data_type data_type,
 
     BinTree_node* new_node = (BinTree_node*)
            calloc (1, sizeof (BinTree_node));
-
     if (!new_node)
     {
         perror ("new_node calloc error");
@@ -70,16 +69,19 @@ BinTree_CtorNode   (const data_type data_type,
     {
         new_node->data.data_value.num_value = data_value;
     }
+
     else if (data_type == OPERATION)
     {
         new_node->data.data_value.op_code =
             (op_code_type) data_value;
     }
+
     else if (data_type == VARIABLE)
     {
         new_node->data.data_value.var_index =
             (var_index_type) data_value;
     }
+
     else
     {
         new_node->data.data_type = NO_TYPE;
@@ -97,6 +99,7 @@ BinTree_CtorNode   (const data_type data_type,
     return new_node;
 }
 
+// change name?
 BinTree_node*
 MakeNodeByData (BinTree_node*      const node_left,
                 BinTree_data_type* const node_data,

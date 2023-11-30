@@ -20,12 +20,26 @@ ReadNodeData (const file_input* const input_parced,
                     BinTree*    const tree);
 
 static data_type
-GetOpCode (BinTree_data_type* const new_data,
-           const char*        const str_input);
+GetNumValue (const file_input*        const input_parced,
+                   size_t*            const line_index,
+                   BinTree_data_type* const new_data);
 
-static var_index_type
-SetVariable (const char*    const var_name,
-                   BinTree* const tree);
+static data_type
+GetOpCode (const file_input*        const input_parced,
+                 size_t*            const line_index,
+                 BinTree_data_type* const new_data);
+
+static data_type
+SetVariable (const file_input*        const input_parced,
+                   size_t*            const line_index,
+                   BinTree_data_type* const new_data,
+                   BinTree*           const tree);
+
+static inline bool
+IsOpeningBracket (const char ch);
+
+static inline bool
+IsClosingBracket (const char ch);
 
 BinTree*
 ReadTree (const char*    const input_file_name,
@@ -60,14 +74,14 @@ ReadNode (const file_input* const input_parced,
     assert (line_index);
     assert (tree);
 
-// inline functions?
-    if (input_parced->lines_array[*line_index].line[0] == '(')
+    if (IsOpeningBracket (input_parced->lines_array[*line_index].line[0]))
     {
         (*line_index)++;
     }
 
     else
     {
+        fprintf (stderr, "No opening bracket.\n");
         return nullptr;
     }
 
@@ -80,10 +94,11 @@ ReadNode (const file_input* const input_parced,
     BinTree_node*      node_right =
         ReadSubtree  (input_parced, line_index, tree);
 
-    if (input_parced->lines_array[*line_index].line[0] == ')')
+    if (IsClosingBracket (input_parced->lines_array[*line_index].line[0]))
     {
         (*line_index)++;
     }
+
     else
     {
         fprintf (stderr, "No closing bracket.\n");
@@ -107,7 +122,7 @@ ReadSubtree (const file_input* const input_parced,
     assert (line_index);
     assert (tree);
 
-    if (input_parced->lines_array[*line_index].line[0] == '(')
+    if (IsOpeningBracket (input_parced->lines_array[*line_index].line[0]))
     {
         return ReadNode (input_parced, line_index, tree);
     }
@@ -135,70 +150,95 @@ ReadNodeData (const file_input* const input_parced,
         return nullptr;
     }
 
-    char* const str_input =
-        (char*) calloc (VAR_NAME_MAX_LEN, sizeof (char));
+    if (GetNumValue (input_parced, line_index, new_data))
+    {
+        return new_data;
+    }
+
+    if (GetOpCode   (input_parced, line_index, new_data))
+    {
+        return new_data;
+    }
+
+    if (SetVariable (input_parced, line_index, new_data, tree))
+    {
+        return new_data;
+    }
+
+    fprintf (stderr, "Unknown type of expression or no expression given.\n");
+
+    return nullptr;
+}
+
+static data_type
+GetNumValue (const file_input*        const input_parced,
+                   size_t*            const line_index,
+                   BinTree_data_type* const new_data)
+{
+    assert (input_parced);
+    assert (line_index);
+    assert (new_data);
 
     if (sscanf (input_parced->lines_array[*line_index].line, "%lg",
                 &new_data->data_value.num_value))
     {
         new_data->data_type = NUMBER;
+        (*line_index)++;
+
+        return NUMBER;
     }
 
-    else if (sscanf (input_parced->lines_array[*line_index].line, "%s",
-                     str_input))
+    else
     {
-        GetOpCode (new_data, str_input);
+        return NO_TYPE;
     }
-
-    if (new_data->data_type == VARIABLE)
-    {
-        new_data->data_value.var_index =
-            SetVariable (str_input, tree);
-
-        if (new_data->data_value.var_index != VAR_INDEX_POISON)
-        {
-            tree->var_number++;
-        }
-    }
-
-    (*line_index)++;
-    free (str_input);
-
-    return new_data;
 }
 
 static data_type
-GetOpCode (BinTree_data_type* const new_data,
-           const char*        const str_input)
+GetOpCode (const file_input*        const input_parced,
+                 size_t*            const line_index,
+                 BinTree_data_type* const new_data)
 {
+    assert (input_parced);
+    assert (line_index);
     assert (new_data);
-    assert (str_input);
 
-    new_data->data_type = VARIABLE;
+    char op_name [OP_NAME_MAX_LEN] = {};
+
+    sscanf (input_parced->lines_array[*line_index].line, "%s", op_name);
 
     for (op_code_type cur_op_code = 0;
-                      cur_op_code < NUM_OF_OP;
-                      cur_op_code++)
+                        cur_op_code < NUM_OF_OP;
+                        cur_op_code++)
     {
-        if (strcasecmp (str_input,
+        if (strcasecmp (op_name,
                         operations_array [cur_op_code]) == 0)
         {
             new_data->data_type = OPERATION;
+            new_data->data_value.op_code = cur_op_code;
 
-            new_data->data_value.op_code =
-                        cur_op_code;
+            (*line_index)++;
+            return OPERATION;
         }
     }
 
-    return new_data->data_type;
+    return NO_TYPE;
 }
 
-static var_index_type
-SetVariable (const char*    const var_name,
-                   BinTree* const tree)
+static data_type
+SetVariable (const file_input*        const input_parced,
+                   size_t*            const line_index,
+                   BinTree_data_type* const new_data,
+                   BinTree*           const tree)
 {
-    assert (var_name);
+    assert (input_parced);
+    assert (line_index);
+    assert (new_data);
     assert (tree);
+
+    char var_name [VAR_NAME_MAX_LEN] = {};
+
+    sscanf (input_parced->lines_array[*line_index].line, "%s", var_name);
 
     if (tree->var_number == tree->var_table_capacity)
     {
@@ -211,11 +251,31 @@ SetVariable (const char*    const var_name,
     if (!tree->var_table[tree->var_number].var_name)
     {
         perror ("var_name allocation error");
-        return VAR_INDEX_POISON;
+        return NO_TYPE;
     }
 
-    strcpy (tree->var_table[tree->var_number].var_name,
-            var_name);
+    strcpy (tree->var_table[tree->var_number].var_name, var_name);
+    tree->var_table->status = ENABLED;
 
-    return tree->var_number;
+    new_data->data_type = VARIABLE;
+    new_data->data_value.var_index = tree->var_number;
+    tree->var_number++;
+
+    (*line_index)++;
+
+    return VARIABLE;
+}
+
+static inline bool
+IsOpeningBracket (const char ch)
+{
+    if (ch == '(') return true;
+    return false;
+}
+
+static inline bool
+IsClosingBracket (const char ch)
+{
+    if (ch == ')') return true;
+    return false;
 }
