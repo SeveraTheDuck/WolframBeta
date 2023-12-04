@@ -86,7 +86,7 @@ OpenLatexFile (BinTree* const tree)
            "\\author{SeveraTheDuck}\n"
 
            "\\begin{document}\n"
-           "\\maketitle", latex_out);
+           "\\maketitle\n", latex_out);
 
     return latex_out;
 }
@@ -193,7 +193,7 @@ PrintOperationToLatex (const BinTree_node* const node,
         case MUL:
             PrintNodeToLatex (node->left,  tree, cur_priority);
 
-            fputc ('*', tree->latex_out);
+            fputs (" \\cdot ", tree->latex_out);
 
             PrintNodeToLatex (node->right, tree, cur_priority);
 
@@ -269,8 +269,8 @@ PrintMathPhrase (const BinTree* const tree)
 {
     assert (tree);
 
-    int random_number = rand () % (upper_index - lower_index + 1)
-                      + lower_index;
+    int32_t random_number = rand () % (upper_index - lower_index + 1)
+                           + lower_index;
 
     fprintf (tree->latex_out, "%s", MATH_PHRASES_ARRAY [random_number]);
 }
@@ -285,6 +285,13 @@ PrintNumberToLatex (const double      num_value,
     {
         fprintf (latex_out, " e ");
     }
+
+    else if (num_value < 0)
+    {
+
+        fprintf (latex_out, "( %lg )", num_value);
+    }
+
     else
     {
         fprintf (latex_out, " %lg ", num_value);

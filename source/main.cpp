@@ -30,6 +30,7 @@ int32_t main (const int32_t /*argc*/, const char** argv)
 
     SimplifyExpression (&d_tree);
 
+    PrintExpressionToLatex (&tree);
     PrintExpressionToLatex (&d_tree);
 
     BinTree_MakeTreeImage (&d_tree);
