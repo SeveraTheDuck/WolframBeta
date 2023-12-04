@@ -1,0 +1,11 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage[russian]{babel}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[a4paper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+\title{Differentiator output}
+\author{SeveraTheDuck}
+\begin{document}
+\maketitle$$sin x *ln x $$$$sin x *ln x $$$$ 1 *cos x *ln x +sin x *\frac{ 1 }{ x }$$$$cos x *ln x +sin x *\frac{ 1 }{ x }$$\end{document}

@@ -1,5 +1,4 @@
-#ifndef BINTREE_CONFIG_H
-#define BINTREE_CONFIG_H
+#pragma once
 
 #include "wolfram_config.h"
 
@@ -33,5 +32,3 @@ const size_t VAR_NAME_MAX_LEN = 50;
 const size_t INIT_VAR_NUMBER  = 10;
 const var_index_type VAR_TABLE_CAPACITY_MULTIPLIER = 2;
 const var_index_type VAR_INDEX_POISON = -1;
-
-#endif /* BINTREE_CONFIG_H */

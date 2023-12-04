@@ -1,5 +1,4 @@
-#ifndef __FILESTRUCT_H__
-#define __FILESTRUCT_H__
+#pragma once
 
 #include <stdio.h>
 #include <assert.h>
@@ -67,5 +66,3 @@ void GetFileInput(const char* file_name, struct file_input* buffer_info,
                   enum partition is_parted);
 
 void PrintParray(line_struct* pointer_array, size_t number_of_lines);
-
-#endif

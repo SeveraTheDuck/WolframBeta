@@ -1,5 +1,4 @@
-#ifndef READ_EQUATION_H
-#define READ_EQUATION_H
+#pragma once
 
 #include "BinTree_struct.h"
 #include "wolfram.h"
@@ -8,5 +7,3 @@
 BinTree*
 ReadTree (const char*    const input_file_name,
                 BinTree* const tree);
-
-#endif /* READ_EQUATION_H */

@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "__config": "cpp",
-        "__nullptr": "cpp",
-        "ios": "cpp",
-        "__node_handle": "cpp"
-    }
-}

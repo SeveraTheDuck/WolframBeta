@@ -1,4 +1,5 @@
 #include "wolfram.h"
+// #include "make_latex.h"
 
 #undef d
 #undef dL
@@ -29,9 +30,7 @@
 #define dR d(node->right)
 
 /// @brief Short way to call a copy function.
-#define c(node) MakeNodeByData((node)->left,            \
-                             &((node)->data),           \
-                               (node)->right, d_tree)
+#define c(node) CopyNode(node, nullptr, d_tree)
 
 /// @brief Copy of left operand.
 #define cL c(node->left)
@@ -44,24 +43,25 @@
  * Their names say for their action.
 */
 
-#define _CONST(value)     BinTree_CtorNode (NUMBER, value, nullptr, nullptr, d_tree)
-#define _ADD(left, right) BinTree_CtorNode (OPERATION, ADD, left, right, d_tree)
-#define _SUB(left, right) BinTree_CtorNode (OPERATION, SUB, left, right, d_tree)
-#define _MUL(left, right) BinTree_CtorNode (OPERATION, MUL, left, right, d_tree)
-#define _DIV(left, right) BinTree_CtorNode (OPERATION, DIV, left, right, d_tree)
-#define _POW(left, right) BinTree_CtorNode (OPERATION, POW, left, right, d_tree)
-#define _SIN(right)       BinTree_CtorNode (OPERATION, SIN, nullptr, right, d_tree)
-#define _COS(right)       BinTree_CtorNode (OPERATION, COS, nullptr, right, d_tree)
+#define _CONST(value)     BinTree_CtorNode (NUMBER, value, nullptr, nullptr, nullptr, d_tree)
+#define _ADD(left, right) BinTree_CtorNode (OPERATION, ADD, left, right, nullptr, d_tree)
+#define _SUB(left, right) BinTree_CtorNode (OPERATION, SUB, left, right, nullptr, d_tree)
+#define _MUL(left, right) BinTree_CtorNode (OPERATION, MUL, left, right, nullptr, d_tree)
+#define _DIV(left, right) BinTree_CtorNode (OPERATION, DIV, left, right, nullptr, d_tree)
+#define _POW(left, right) BinTree_CtorNode (OPERATION, POW, left, right, nullptr, d_tree)
+#define _SIN(right)       BinTree_CtorNode (OPERATION, SIN, nullptr, right, nullptr, d_tree)
+#define _COS(right)       BinTree_CtorNode (OPERATION, COS, nullptr, right, nullptr, d_tree)
+#define _LN(right)        BinTree_CtorNode (OPERATION, LN,  nullptr, right, nullptr, d_tree)
+
+static double
+EvaluateChecked (const BinTree_node* const node,
+                       BinTree*      const tree);
 
 static double
 DoOperation (const double       left_part,
              const double       right_part,
              const op_code_type operation_number,
              BinTree* const     tree);
-
-static double
-EvaluateChecked (const BinTree_node* const node,
-                       BinTree*      const tree);
 
 static var_index_type
 GetDiffVarIndex (const BinTree* const tree,
@@ -71,6 +71,15 @@ static BinTree_node*
 DiffNode (const BinTree_node*  const node,
                 BinTree*       const d_tree,
           const var_index_type       diff_var_index);
+
+static BinTree_node*
+DiffPowNode (const BinTree_node* const node,
+                   BinTree*      const d_tree,
+             const var_index_type      diff_var_index);
+
+static bool
+IsNodeVarDependant (const BinTree_node* const node,
+                    const var_index_type      diff_var_index);
 
 static BinTree_node*
 DiffVariable (const BinTree_node*  const node,
@@ -84,27 +93,6 @@ MakeDiffVariablesArray (const BinTree* const tree,
 static void
 EnableDiffVariables (const BinTree_node* const d_node,
                            BinTree*      const d_tree);
-
-static is_simplified
-WrapConstants (BinTree_node* const node,
-               BinTree*      const tree);
-
-static double
-SimplifyBinaryOperation (BinTree_node* const node,
-                        BinTree*      const tree);
-
-static double
-SimplifyUnaryOperation (BinTree_node* const node,
-                        BinTree*      const tree);
-
-static inline bool
-IsNumber (const data_type data_type);
-
-static inline bool
-IsOperation (const data_type data_type);
-
-static inline bool
-IsVariable (const data_type data_type);
 
 double
 Evaluate (BinTree* const tree)
@@ -154,12 +142,12 @@ EvaluateChecked (const BinTree_node* const node,
         return NAN;
     }
 
-    if (IsNumber (node->data.data_type))
+    if (IsNumber (node))
     {
         return node->data.data_value.num_value;
     }
 
-    if (IsVariable (node->data.data_type))
+    if (IsVariable (node))
     {                                   // which is prettier?
         return tree->var_table[node->data.data_value.var_index]
                     .var_value;
@@ -168,7 +156,7 @@ EvaluateChecked (const BinTree_node* const node,
     double left_part  = EvaluateChecked (node->left,  tree);
     double right_part = EvaluateChecked (node->right, tree);
 
-    if (IsOperation (node->data.data_type))
+    if (IsOperation (node))
     {
         return DoOperation (left_part, right_part,
                             node->data.data_value.op_code, tree);
@@ -205,6 +193,8 @@ DoOperation (const double       left_part,
 
         case COS: return cos (right_part);
 
+        case LN:  return log (right_part);
+
         default:
         {
             fprintf (stderr, "I don't know such operation number: %d",
@@ -239,7 +229,7 @@ DifferentiateExpression (      BinTree* const   tree,
     /* no variable found, everything is const */
     if (diff_var_index == VAR_INDEX_POISON)
     {
-        d_tree->root = BinTree_CtorNode (NUMBER, 0,
+        d_tree->root = BinTree_CtorNode (NUMBER, 0, nullptr,
                                          nullptr, nullptr, d_tree);
 
         return d_tree;
@@ -248,6 +238,8 @@ DifferentiateExpression (      BinTree* const   tree,
     d_tree->root = DiffNode (tree->root, d_tree, diff_var_index);
 
     MakeDiffVariablesArray (tree, d_tree);
+
+    SetParents (nullptr, d_tree->root);
 
     return d_tree;
 }
@@ -268,13 +260,12 @@ GetDiffVarIndex (const BinTree* const tree,
     for (var_index_type i = 0; i < tree->var_number; ++i)
     {
         if (strcmp (diff_var_name, tree->var_table [i].var_name) == 0)
-        {
             return i;
-        }
     }
 
-    fprintf (stderr, "Warning! Differentiating by unknown variable.\n"
-                     "All expressions will be considered as const.\n");
+    // fprintf (stderr, "Warning! Differentiating by unknown variable.\n"
+    //                  "All expressions will be considered as const.\n");
+
     return VAR_INDEX_POISON;
 }
 
@@ -291,20 +282,20 @@ DiffNode (const BinTree_node*  const node,
         return nullptr;
     }
 
-    if (IsNumber (node->data.data_type))
+    if (IsNumber (node))
     {
-        return BinTree_CtorNode (NUMBER, 0, nullptr, nullptr, d_tree);
+        return _CONST (0);
     }
 
-    else if (IsVariable (node->data.data_type))
+    else if (IsVariable (node))
     {
         return DiffVariable (node, d_tree, diff_var_index);
     }
 
-    else if (IsOperation (node->data.data_type))
+    else if (IsOperation (node))
     {
-        /*
-         * Macro DSL used. Check the definitions in wolfram.h file.
+        /**
+         * Macro DSL used. Check the definitions above file.
          */
         switch (node->data.data_value.op_code)
         {
@@ -322,15 +313,16 @@ DiffNode (const BinTree_node*  const node,
 
             // different cases!!!
             case POW:
-                return _MUL (_MUL (cR, _POW (cL,
-                             _CONST (node->right->data
-                                     .data_value.num_value - 1))), dL);
+                return DiffPowNode (node, d_tree, diff_var_index);
 
             case SIN:
                 return _MUL (dR, _COS (cR));
 
             case COS:
-                return _MUL (dR, _SIN (cR));
+                return _MUL (_MUL (dR, _SIN (cR)), _CONST (-1));
+
+            case LN:
+                return _DIV (dR, cR);
 
             default:
                 return nullptr;
@@ -354,13 +346,82 @@ DiffVariable (const BinTree_node*  const node,
 
     if (node->data.data_value.var_index == diff_var_index)
     {
-        return BinTree_CtorNode (NUMBER, 1, nullptr, nullptr, d_tree);
+        return _CONST (1);
     }
 
     else
     {
-        return BinTree_CtorNode (NUMBER, 0, nullptr, nullptr, d_tree);
+        return _CONST (0);
     }
+}
+
+static BinTree_node*
+DiffPowNode (const BinTree_node*  const node,
+                   BinTree*       const d_tree,
+             const var_index_type       diff_var_index)
+{
+    assert (node);
+    assert (d_tree);
+
+    bool is_left_dependant  =
+        IsNodeVarDependant (node->left,  diff_var_index);
+    bool is_right_dependant =
+        IsNodeVarDependant (node->right, diff_var_index);
+
+    if (is_left_dependant & is_right_dependant)
+    {
+        // return DiffExpAndPowFunction ();
+    }
+
+    else if (is_left_dependant)
+    {
+        return _MUL (cR, _MUL (dL, _POW (cL, _CONST (node->right->data.
+                                             data_value.num_value - 1))));
+    }
+
+    else if (is_right_dependant)
+    {
+        // return DiffExpFunction ();
+    }
+
+    else
+    {
+        return _CONST (0);
+    }
+}
+
+static bool
+IsNodeVarDependant (const BinTree_node* const node,
+                    const var_index_type      diff_var_index)
+{
+    assert (node);
+
+    if (node->data.data_type == VARIABLE)
+    {
+        if (node->data.data_value.var_index == diff_var_index)
+            return true;
+    }
+
+    bool left_dependence  = false;
+    bool right_dependence = false;
+
+    if (node->left)
+    {
+        left_dependence =
+            IsNodeVarDependant (node->left, diff_var_index);
+
+        if (left_dependence) return true;
+    }
+
+    if (node->right)
+    {
+        right_dependence =
+            IsNodeVarDependant (node->right, diff_var_index);
+
+        if (right_dependence) return true;
+    }
+
+    return false;
 }
 
 static void
@@ -371,7 +432,7 @@ MakeDiffVariablesArray (const BinTree* const tree,
     assert (d_tree);
 
     d_tree->var_number = tree->var_number;
-    if (d_tree->var_number < d_tree->var_table_capacity)
+    if (d_tree->var_number > d_tree->var_table_capacity)
     {
         d_tree->var_table_capacity = tree->var_table_capacity;
         ReallocVarTable (d_tree);
@@ -412,177 +473,6 @@ EnableDiffVariables (const BinTree_node* const d_node,
     EnableDiffVariables (d_node->right, d_tree);
 }
 
-BinTree*
-SimplifyExpression (BinTree* const tree)
-{
-    if (!tree)
-    {
-        fprintf (stderr, "Wrong tree struct pointer.\n");
-        return nullptr;
-    }
-
-    BinTree_VerifyAndDump (tree);
-
-    tree->simplify_status = NOT_SIMPLIFIED;
-    WrapConstants (tree->root, tree);
-
-    return tree;
-}
-
-static is_simplified
-WrapConstants (BinTree_node* const node,
-               BinTree*      const tree)
-{
-    assert (tree);
-    if (!node)
-    {
-        fprintf (stderr, "Invalid pointer to node.\n");
-        return NOT_SIMPLIFIED;
-    }
-
-    double total_value = BinTree_POISON;
-
-    if (node->left)  WrapConstants (node->left,  tree);
-    if (node->right) WrapConstants (node->right, tree);
-
-    if (node->left && node->right)
-    {
-        total_value = SimplifyBinaryOperation (node, tree);
-    }
-
-    else if (node->right)
-    {
-        total_value = SimplifyUnaryOperation (node, tree);
-    }
-
-    if (fabs (total_value - BinTree_POISON) > __DBL_EPSILON__)
-    {
-        node->data.data_type = NUMBER;
-        node->data.data_value.num_value = total_value;
-
-        BinTree_DestroySubtree (node->left,  tree);
-        BinTree_DestroySubtree (node->right, tree);
-
-        node->left  = nullptr;
-        node->right = nullptr;
-
-        return SIMPLIFIED;
-    }
-
-    return NOT_SIMPLIFIED;
-}
-
-static double
-SimplifyBinaryOperation (BinTree_node* const node,
-                         BinTree*      const tree)
-{
-    assert (node);
-    assert (tree);
-
-    double total_value = BinTree_POISON;
-
-    if (node->left ->data.data_type == NUMBER &&
-        node->right->data.data_type == NUMBER &&
-        node->data.data_type        == OPERATION)
-    {
-        double left_value  = node->left ->data.data_value.num_value;
-        double right_value = node->right->data.data_value.num_value;
-
-        switch (node->data.data_value.op_code)
-        {
-            case ADD:
-                total_value = left_value + right_value;
-                break;
-
-            case SUB:
-                total_value = left_value - right_value;
-                break;
-
-            case MUL:
-                total_value = left_value * right_value;
-                break;
-
-            case DIV:
-                total_value = left_value / right_value;
-                break;
-
-            case POW:
-                total_value = pow (left_value, right_value);
-                break;
-
-            default:
-                fprintf (stderr, "Unknown operation\n");
-                return NOT_SIMPLIFIED;
-        }
-    }
-
-    if (fabs (total_value - BinTree_POISON) > __DBL_EPSILON__)
-    {
-        tree->simplify_status = SIMPLIFIED;
-    }
-
-    return total_value;
-}
-
-static double
-SimplifyUnaryOperation (BinTree_node* const node,
-                        BinTree*      const tree)
-{
-    assert (node);
-    assert (tree);
-
-    double total_value = BinTree_POISON;
-
-    if (node->right->data.data_type == NUMBER &&
-        node->data.data_type == OPERATION)
-    {
-        double right_value = node->right->data.data_value.num_value;
-
-        switch (node->data.data_value.op_code)
-        {
-            case SIN:
-                total_value = sin (right_value);
-                break;
-
-            case COS:
-                total_value = cos (right_value);
-                break;
-
-            default:
-                fprintf (stderr, "Unknown operation\n");
-                return NOT_SIMPLIFIED;
-        }
-    }
-
-    if (fabs (total_value - BinTree_POISON) > __DBL_EPSILON__)
-    {
-        tree->simplify_status = SIMPLIFIED;
-    }
-
-    return total_value;
-}
-
-static inline bool
-IsNumber (const data_type data_type)
-{
-    if (data_type == NUMBER) return true;
-    return false;
-}
-
-static inline bool
-IsOperation (const data_type data_type)
-{
-    if (data_type == OPERATION) return true;
-    return false;
-}
-
-static inline bool
-IsVariable (const data_type data_type)
-{
-    if (data_type == VARIABLE) return true;
-    return false;
-}
-
 #undef d
 #undef dL
 #undef dR
@@ -594,3 +484,5 @@ IsVariable (const data_type data_type)
 #undef _MUL
 #undef _DIV
 #undef _POW
+#undef _SIN
+#undef _COS

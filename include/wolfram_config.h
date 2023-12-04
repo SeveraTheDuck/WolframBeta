@@ -1,5 +1,4 @@
-#ifndef WOLFRAM_CONFIG_H
-#define WOLFRAM_CONFIG_H
+#pragma once
 
 enum data_type
 {
@@ -24,13 +23,12 @@ enum unary_operation
 {
     SIN = NUM_OF_BIN_OP,
     COS,
+    LN,
 
-    NUM_OF_UN_OP = 2
+    NUM_OF_UN_OP = 3
 };
 
 const size_t NUM_OF_OP = NUM_OF_BIN_OP + NUM_OF_UN_OP;
 
 const char* const operations_array [NUM_OF_OP] =
-    {"+", "-", "*", "/", "^", "SIN", "COS"};
-
-#endif /* WOLFRAM_CONFIG_H */
+    {"+", "-", "*", "/", "^", "SIN", "COS", "LN"};

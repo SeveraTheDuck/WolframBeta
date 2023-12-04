@@ -32,6 +32,10 @@ BinTree_Ctor       (BinTree* const tree,
         tree->errors |= BINTREE_VAR_TABLE_NULLPTR;
     }
 
+    tree->latex_out = nullptr;
+    tree->root      = nullptr;
+    tree->simplify_status = NOT_SIMPLIFIED;
+
     tree->n_elem     = 0;
     tree->errors     = 0;
     tree->var_number = 0;
@@ -45,6 +49,7 @@ BinTree_CtorNode   (const data_type data_type,
                     const double    data_value,
                     BinTree_node* const left,
                     BinTree_node* const right,
+                    BinTree_node* const parent,
                     BinTree*      const tree)
 {
     if (!tree)
@@ -91,8 +96,9 @@ BinTree_CtorNode   (const data_type data_type,
         return nullptr;
     }
 
-    new_node->left  = left;
-    new_node->right = right;
+    new_node->left   = left;
+    new_node->right  = right;
+    new_node->parent = parent;
 
     tree->n_elem++;
 
@@ -104,6 +110,7 @@ BinTree_node*
 MakeNodeByData (BinTree_node*      const node_left,
                 BinTree_data_type* const node_data,
                 BinTree_node*      const node_right,
+                BinTree_node*      const parent,
                 BinTree*           const tree)
 {
     assert (node_data);
@@ -112,19 +119,19 @@ MakeNodeByData (BinTree_node*      const node_left,
     if (node_data->data_type == NUMBER)
     {
         return BinTree_CtorNode (NUMBER, node_data->data_value.num_value,
-                                 node_left, node_right, tree);
+                                 node_left, node_right, parent, tree);
     }
 
     else if (node_data->data_type == OPERATION)
     {
         return BinTree_CtorNode (OPERATION, node_data->data_value.op_code,
-                                 node_left, node_right, tree);
+                                 node_left, node_right, parent, tree);
     }
 
     else if (node_data->data_type == VARIABLE)
     {
         return BinTree_CtorNode (VARIABLE, node_data->data_value.var_index,
-                                 node_left, node_right, tree);
+                                 node_left, node_right, parent, tree);
     }
 
     else
@@ -154,8 +161,9 @@ BinTree_DestroySubtree (BinTree_node* const node,
 
     node->data.data_type = NO_TYPE;
     node->data.data_value.num_value = BinTree_POISON;
-    node->left  = nullptr;
-    node->right = nullptr;
+    node->left   = nullptr;
+    node->right  = nullptr;
+    node->parent = nullptr;
 
     tree->n_elem--;
 
@@ -309,6 +317,19 @@ BinTree_CheckCycle (const BinTree_node* const node,
     return NO_ERRORS;
 }
 
+BinTree_node*
+CopyNode (BinTree_node* const node,
+          BinTree_node* const parent,
+          BinTree*      const c_tree)
+{
+    if (!node) return nullptr;
+
+    return MakeNodeByData (CopyNode (node->left, node->parent, c_tree),
+                           &node->data,
+                           CopyNode (node->right, node->parent, c_tree),
+                           parent, c_tree);
+}
+
 variable*
 ReallocVarTable (BinTree* const tree)
 {
@@ -320,4 +341,23 @@ ReallocVarTable (BinTree* const tree)
                              sizeof (variable));
 
     return tree->var_table;
+}
+
+void
+SetParents (BinTree_node* const parent,
+            BinTree_node* const node)
+{
+    assert (node);
+
+    node->parent = parent;
+
+    if (node->left)
+    {
+        SetParents (node, node->left);
+    }
+
+    if (node->right)
+    {
+        SetParents (node, node->right);
+    }
 }

@@ -1,5 +1,4 @@
-#ifndef BINTREE_STRUCT
-#define BINTREE_STRUCT
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,14 +14,14 @@
 
 #define BINTREE_CTOR_GET_INFO __LINE__, __FILE__, __func__
 
-/*
+/**
  * This is a short define to call BinTree_Ctor with additional
  * information provided by macro.
  */
 #define BINTREE_CTOR(tree)                                      \
         BinTree_Ctor ((tree), #tree, BINTREE_CTOR_GET_INFO)
 
-/*
+/**
  * This define is for style purposes, because BinTree_Ctor is
  * an uppercased macro. It also gives an opportunity to call
  * for Dtor without aditional tree->root parameter.
@@ -67,7 +66,10 @@ enum BinTree_errors
     NUMBER_OF_POSSIBLE_ERRORS = 11
 };
 
-/// @brief Used for derivatives, if several variables disapear during differentiation.
+/**
+ * @brief Used for derivatives, if several variables
+ * disapear during differentiation.
+ */
 enum variable_status
 {
     DISABLED = 0,
@@ -85,6 +87,7 @@ struct BinTree_node
     BinTree_data_type data;
     BinTree_node*     left;
     BinTree_node*     right;
+    BinTree_node*     parent;
 };
 
 struct variable
@@ -111,6 +114,8 @@ struct BinTree
 
     is_simplified simplify_status;
 
+    FILE* latex_out;
+
     BinTree_error_type errors;
 };
 
@@ -123,6 +128,7 @@ BinTree_CtorNode   (const data_type data_type,
                     const double    data_value,
                     BinTree_node* const left,
                     BinTree_node* const right,
+                    BinTree_node* const parent,
                     BinTree*      const tree);
 
 /*
@@ -133,6 +139,7 @@ BinTree_node*
 MakeNodeByData (BinTree_node*      const node_left,
                 BinTree_data_type* const node_data,
                 BinTree_node*      const node_right,
+                BinTree_node*      const parent,
                 BinTree*           const tree);
 
 BinTree_error_type
@@ -145,7 +152,14 @@ BinTree_DestroyVarTable (BinTree* const tree);
 BinTree_error_type
 BinTree_Verify (BinTree* const tree);
 
+BinTree_node*
+CopyNode (BinTree_node* const node,
+          BinTree_node* const parent,
+          BinTree*      const c_tree);
+
 variable*
 ReallocVarTable (BinTree* const tree);
 
-#endif /* BINTREE_STRUCT */
+void
+SetParents (BinTree_node* const parent,
+            BinTree_node* const node);

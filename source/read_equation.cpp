@@ -2,7 +2,6 @@
 
 // input_parced & line_index into one struct?
 // FileOpenLib remake
-// inline functions like IsOpenBracket
 
 static BinTree_node*
 ReadNode (const file_input* const input_parced,
@@ -60,15 +59,17 @@ ReadTree (const char*    const input_file_name,
 
     tree->root = ReadNode (&input_parced, &line_index, tree);
 
+    SetParents (nullptr, tree->root);
+
     FreeFileInput (&input_parced);
 
     return tree;
 }
 
 static BinTree_node*
-ReadNode (const file_input* const input_parced,
-                size_t*     const line_index,
-                BinTree*    const tree)
+ReadNode (const file_input*   const input_parced,
+                size_t*       const line_index,
+                BinTree*      const tree)
 {
     assert (input_parced);
     assert (line_index);
@@ -102,11 +103,12 @@ ReadNode (const file_input* const input_parced,
     else
     {
         fprintf (stderr, "No closing bracket.\n");
+        fprintf (stderr, "%zd\n", *line_index);
         return nullptr;
     }
 
     BinTree_node* new_node =
-        MakeNodeByData (node_left, node_data, node_right, tree);
+        MakeNodeByData (node_left, node_data, node_right, nullptr, tree);
 
     free (node_data);
 
@@ -208,8 +210,8 @@ GetOpCode (const file_input*        const input_parced,
     sscanf (input_parced->lines_array[*line_index].line, "%s", op_name);
 
     for (op_code_type cur_op_code = 0;
-                        cur_op_code < NUM_OF_OP;
-                        cur_op_code++)
+                      cur_op_code < NUM_OF_OP;
+                      cur_op_code++)
     {
         if (strcasecmp (op_name,
                         operations_array [cur_op_code]) == 0)
@@ -239,6 +241,18 @@ SetVariable (const file_input*        const input_parced,
     char var_name [VAR_NAME_MAX_LEN] = {};
 
     sscanf (input_parced->lines_array[*line_index].line, "%s", var_name);
+
+    for (var_index_type i = 0; i < tree->var_number; ++i)
+    {
+        if (strcmp (var_name, tree->var_table[i].var_name) == 0)
+        {
+            new_data->data_type = VARIABLE;
+            new_data->data_value.var_index = i;
+
+            (*line_index)++;
+            return VARIABLE;
+        }
+    }
 
     if (tree->var_number == tree->var_table_capacity)
     {
