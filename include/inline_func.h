@@ -3,6 +3,8 @@
 #include <math.h>
 #include "BinTree_struct.h"
 
+const double WOLFRAM_EPS = 1e-9;
+
 inline bool
 IsNumber (const BinTree_node* const node);
 
@@ -46,7 +48,7 @@ IsNullValue (const BinTree_node* const node)
 
     if (!IsNumber (node)) return false;
 
-    if (fabs (node->data.data_value.num_value) < __DBL_EPSILON__)
+    if (fabs (node->data.data_value.num_value) < WOLFRAM_EPS)
     {
         return true;
     }
@@ -61,7 +63,7 @@ IsOneValue (const BinTree_node* const node)
 
     if (!IsNumber (node)) return false;
 
-    if (fabs (node->data.data_value.num_value - 1) < __DBL_EPSILON__)
+    if (fabs (node->data.data_value.num_value - 1) < WOLFRAM_EPS)
     {
         return true;
     }

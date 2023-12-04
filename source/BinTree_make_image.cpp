@@ -85,10 +85,17 @@ BinTree_PrintNodes (const BinTree_node* const node,
 
         case NUMBER:
         {
-            fprintf (image_file, BinTree_OUTPUT_F
-                                 "\", color = \"#00FF00\"];\n",
-                                 node->data.data_value
-                                           .num_value);
+            if (fabs (node->data.data_value.num_value - EULER_CONSTANT)
+                    < WOLFRAM_EPS)
+            {
+                fprintf (image_file, " e ");
+            }
+            else
+            {
+                fprintf (image_file, BinTree_OUTPUT_F,
+                         node->data.data_value.num_value);
+            }
+            fprintf (image_file, "\", color = \"#00FF00\"];\n");
 
             break;
         }

@@ -1,12 +1,27 @@
 #include "../include/make_latex.h"
 
+const char* MATH_PHRASES_ARRAY [] =
+    {"Легко заметить, что:",
+     "Следующий факт будем использовать без доказательства:",
+     "Ёжику очевидно, что:",
+     "Доказательство данного факта предлагается читателю в качестве упражнения:",
+     "Пользуясь теоремой Коши номер раз, два, ... сколько их там, получим:",
+     "По теореме о стреляющем в плохую погоду колене, получим:",
+     "Используя тридцать три теоремы о циркуляции алкоголя в крови, выведем:",
+     "По размерности сходится, поэтому:",
+     "Из рандомного места уравнения получим:",
+     "Ахалай махалай, решайся давай:",
+     "В начале имеем:"};
+
+const uint8_t lower_index = 0;
+const uint8_t upper_index = sizeof (MATH_PHRASES_ARRAY) / sizeof (char*) - 1;
+
 static uint32_t
 GetOperationPriority (const op_code_type op_code);
 
 static void
 PrintOperationToLatex (const BinTree_node* const node,
                        const BinTree*      const tree,
-                             FILE*         const latex_out,
                        const uint32_t            previous_priority);
 
 static inline void
@@ -17,9 +32,11 @@ static inline void
 PrintVariableToLatex (const char* const var_name,
                             FILE* const latex_out);
 
+static void
+PrintMathPhrase (const BinTree* const tree);
+
 void
-PrintExpressionToLatex (const BinTree* const tree,
-                              FILE*    const latex_out)
+PrintExpressionToLatex (const BinTree* const tree)
 {
     if (!tree)
     {
@@ -27,23 +44,26 @@ PrintExpressionToLatex (const BinTree* const tree,
         return;
     }
 
-    if (!latex_out)
+    if (!tree->latex_out)
     {
         fprintf (stderr, "Invalid pointer to latex_out\n");
         return;
     }
 
-    fprintf (latex_out, "$$");
-
-    PrintNodeToLatex (tree->root, tree, latex_out, START_PRIORITY);
-
-    fprintf (latex_out, "$$");
+    PrintNodeToLatex (tree->root, tree, START_PRIORITY);
 }
 
 FILE*
-OpenLatexFile ()
+OpenLatexFile (BinTree* const tree)
 {
+    if (!tree)
+    {
+        fprintf (stderr, "Invalid pointer to tree struct.\n");
+        return nullptr;
+    }
+
     FILE* latex_out = fopen (LATEX_OUTPUT_FILE_NAME, "wb");
+    tree->latex_out = latex_out;
     if (!latex_out)
     {
         perror ("fopen() for latex_out failed");
@@ -89,8 +109,7 @@ CloseLatexFile (FILE* const latex_out)
 void
 PrintNodeToLatex (const BinTree_node* const node,
                   const BinTree*      const tree,
-                        FILE*         const latex_out,
-                  const uint32_t            previous_priority)
+                  const uint32_t            pre_priority)
 {
     if (!node)
     {
@@ -98,120 +117,130 @@ PrintNodeToLatex (const BinTree_node* const node,
         return;
     }
 
-    if (!latex_out)
+    if (!tree->latex_out)
     {
         fprintf (stderr, "Invalid pointer to latex_out\n");
         return;
     }
 
+    if (pre_priority == START_PRIORITY)
+    {
+        PrintMathPhrase (tree);
+        fprintf (tree->latex_out, "$$");
+    }
+
     if (IsOperation (node))
     {
-        PrintOperationToLatex (node, tree, latex_out, previous_priority);
+        PrintOperationToLatex (node, tree, pre_priority);
     }
 
     else if (IsNumber (node))
     {
-        PrintNumberToLatex (node->data.data_value.num_value, latex_out);
+        PrintNumberToLatex (node->data.data_value.num_value,
+                            tree->latex_out);
     }
 
     else if (IsVariable (node))
     {
         PrintVariableToLatex (tree->var_table [node->data.data_value.var_index]
-                                   .var_name, latex_out);
+                                   .var_name, tree->latex_out);
     }
 
     else
     {
         fprintf (stderr, "Wrong data type.\n");
     }
+
+    if (pre_priority == START_PRIORITY)
+    {
+        fprintf (tree->latex_out, "$$");
+    }
 }
 
 static void
 PrintOperationToLatex (const BinTree_node* const node,
                        const BinTree*      const tree,
-                             FILE*         const latex_out,
                        const uint32_t            pre_priority)
 {
     assert (node);
     assert (tree);
-    assert (latex_out);
 
     uint32_t cur_priority =
         GetOperationPriority (node->data.data_value.op_code);
 
-    if (cur_priority < pre_priority) fputc ('(', latex_out);
+    if (cur_priority < pre_priority) fputc ('(', tree->latex_out);
 
     switch (node->data.data_value.op_code)
     {
         case ADD:
-            PrintNodeToLatex (node->left,  tree, latex_out, cur_priority);
+            PrintNodeToLatex (node->left,  tree, cur_priority);
 
-            fputc ('+', latex_out);
+            fputc ('+', tree->latex_out);
 
-            PrintNodeToLatex (node->right, tree, latex_out, cur_priority);
+            PrintNodeToLatex (node->right, tree, cur_priority);
 
             break;
 
         case SUB:
-            PrintNodeToLatex (node->left,  tree, latex_out, cur_priority);
+            PrintNodeToLatex (node->left,  tree, cur_priority);
 
-            fputc ('-', latex_out);
+            fputc ('-', tree->latex_out);
 
-            PrintNodeToLatex (node->right, tree, latex_out, cur_priority);
+            PrintNodeToLatex (node->right, tree, cur_priority);
 
             break;
 
         case MUL:
-            PrintNodeToLatex (node->left,  tree, latex_out, cur_priority);
+            PrintNodeToLatex (node->left,  tree, cur_priority);
 
-            fputc ('*', latex_out);
+            fputc ('*', tree->latex_out);
 
-            PrintNodeToLatex (node->right, tree, latex_out, cur_priority);
+            PrintNodeToLatex (node->right, tree, cur_priority);
 
             break;
 
         case DIV:
-            fprintf (latex_out, "\\frac{");
+            fprintf (tree->latex_out, "\\frac{");
 
-            PrintNodeToLatex (node->left,  tree, latex_out, cur_priority);
-            fputs ("}{", latex_out);
-            PrintNodeToLatex (node->right, tree, latex_out, cur_priority);
+            PrintNodeToLatex (node->left,  tree, cur_priority);
+            fputs ("}{", tree->latex_out);
+            PrintNodeToLatex (node->right, tree, cur_priority);
 
-            fputc ('}', latex_out);
+            fputc ('}', tree->latex_out);
 
             break;
 
         case POW:
-            PrintNodeToLatex (node->left,  tree, latex_out, cur_priority);
+            PrintNodeToLatex (node->left,  tree, cur_priority);
 
-            fputc ('^', latex_out);
+            fputc ('^', tree->latex_out);
 
-            fputc ('{', latex_out);
-            PrintNodeToLatex (node->right, tree, latex_out, cur_priority);
-            fputc ('}', latex_out);
+            fputc ('{', tree->latex_out);
+            PrintNodeToLatex (node->right, tree, ADD_SUB_PRIORITY);
+            fputc ('}', tree->latex_out);
 
             break;
 
         case SIN:
-            fputs ("sin", latex_out);
-            PrintNodeToLatex (node->right, tree, latex_out, cur_priority);
+            fputs ("sin", tree->latex_out);
+            PrintNodeToLatex (node->right, tree, cur_priority);
 
             break;
 
         case COS:
-            fputs ("cos", latex_out);
-            PrintNodeToLatex (node->right, tree, latex_out, cur_priority);
+            fputs ("cos", tree->latex_out);
+            PrintNodeToLatex (node->right, tree, cur_priority);
 
             break;
 
         case LN:
-            fputs ("ln", latex_out);
-            PrintNodeToLatex (node->right, tree, latex_out, cur_priority);
+            fputs ("ln", tree->latex_out);
+            PrintNodeToLatex (node->right, tree, cur_priority);
 
             break;
     }
 
-    if (cur_priority < pre_priority) fputc (')', latex_out);
+    if (cur_priority < pre_priority) fputc (')', tree->latex_out);
 }
 
 static uint32_t
@@ -235,12 +264,31 @@ GetOperationPriority (const op_code_type op_code)
     }
 }
 
+static void
+PrintMathPhrase (const BinTree* const tree)
+{
+    assert (tree);
+
+    int random_number = rand () % (upper_index - lower_index + 1)
+                      + lower_index;
+
+    fprintf (tree->latex_out, "%s", MATH_PHRASES_ARRAY [random_number]);
+}
+
 static inline void
 PrintNumberToLatex (const double      num_value,
                           FILE* const latex_out)
 {
     assert (latex_out);
-    fprintf (latex_out, " %lg ", num_value);
+
+    if (fabs (num_value - EULER_CONSTANT) < WOLFRAM_EPS)
+    {
+        fprintf (latex_out, " e ");
+    }
+    else
+    {
+        fprintf (latex_out, " %lg ", num_value);
+    }
 }
 
 static inline void

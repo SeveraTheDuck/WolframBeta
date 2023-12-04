@@ -4,6 +4,9 @@
 #include "BinTree_struct.h"
 #include "wolfram_config.h"
 #include "inline_func.h"
+#include "make_latex.h"
+
+const double EULER_CONSTANT = 2.718281828;
 
 double
 Evaluate (BinTree* const tree);

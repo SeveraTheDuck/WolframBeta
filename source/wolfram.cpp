@@ -73,13 +73,13 @@ DiffNode (const BinTree_node*  const node,
           const var_index_type       diff_var_index);
 
 static BinTree_node*
-DiffPowNode (const BinTree_node* const node,
-                   BinTree*      const d_tree,
-             const var_index_type      diff_var_index);
+DiffPowNode (const BinTree_node*  const node,
+                   BinTree*       const d_tree,
+             const var_index_type       diff_var_index);
 
 static bool
-IsNodeVarDependant (const BinTree_node* const node,
-                    const var_index_type      diff_var_index);
+IsNodeVarDependant (const BinTree_node*  const node,
+                    const var_index_type       diff_var_index);
 
 static BinTree_node*
 DiffVariable (const BinTree_node*  const node,
@@ -223,6 +223,8 @@ DifferentiateExpression (      BinTree* const   tree,
         return nullptr;
     }
 
+    fprintf (tree->latex_out, "Дифференцируем выражение.\\\\");
+
     const var_index_type diff_var_index =
         GetDiffVarIndex (tree, diff_var_name);
 
@@ -235,9 +237,12 @@ DifferentiateExpression (      BinTree* const   tree,
         return d_tree;
     }
 
+    d_tree->latex_out = tree->latex_out;
+    MakeDiffVariablesArray (tree, d_tree);
+
     d_tree->root = DiffNode (tree->root, d_tree, diff_var_index);
 
-    MakeDiffVariablesArray (tree, d_tree);
+    EnableDiffVariables (d_tree->root, d_tree);
 
     SetParents (nullptr, d_tree->root);
 
@@ -294,39 +299,59 @@ DiffNode (const BinTree_node*  const node,
 
     else if (IsOperation (node))
     {
+        BinTree_node* diff_node = nullptr;
+
         /**
          * Macro DSL used. Check the definitions above file.
          */
         switch (node->data.data_value.op_code)
         {
             case ADD:
-                return _ADD (dL, dR);
-            case SUB:
-                return _SUB (dL, dR);
-            case MUL:
-                return _ADD (_MUL (dL, cR),
-                             _MUL (cL, dR));
-            case DIV:
-                return _DIV (_SUB (_MUL (dL, cR),
-                                   _MUL (cL, dR)),
-                             _MUL (cR, cR));
+                diff_node = _ADD (dL, dR);
+                break;
 
-            // different cases!!!
+            case SUB:
+                diff_node = _SUB (dL, dR);
+                break;
+
+            case MUL:
+                diff_node = _ADD (_MUL (dL, cR),
+                                  _MUL (cL, dR));
+                break;
+
+            case DIV:
+                diff_node = _DIV (_SUB (_MUL (dL, cR),
+                                   _MUL (cL, dR)),
+                                   _MUL (cR, cR));
+                break;
+
             case POW:
-                return DiffPowNode (node, d_tree, diff_var_index);
+                diff_node = DiffPowNode (node, d_tree, diff_var_index);
+                break;
 
             case SIN:
-                return _MUL (dR, _COS (cR));
+                diff_node = _MUL (dR, _COS (cR));
+                break;
 
             case COS:
-                return _MUL (_MUL (dR, _SIN (cR)), _CONST (-1));
+                diff_node = _MUL (_MUL (dR, _SIN (cR)), _CONST (-1));
+                break;
 
             case LN:
-                return _DIV (dR, cR);
+                diff_node = _DIV (dR, cR);
+                break;
 
             default:
-                return nullptr;
+                diff_node = nullptr;
+                break;
         }
+
+        if (diff_node)
+        {
+            PrintNodeToLatex (diff_node, d_tree, START_PRIORITY);
+        }
+
+        return diff_node;
     }
 
     else
@@ -370,7 +395,14 @@ DiffPowNode (const BinTree_node*  const node,
 
     if (is_left_dependant & is_right_dependant)
     {
-        // return DiffExpAndPowFunction ();
+        BinTree_node* old_node =
+            _POW (_CONST (EULER_CONSTANT), _MUL (cR, _LN (cL)));
+
+        BinTree_node* diff_node = d (old_node);
+
+        BinTree_DestroySubtree (old_node, d_tree);
+
+        return diff_node;
     }
 
     else if (is_left_dependant)
@@ -381,7 +413,7 @@ DiffPowNode (const BinTree_node*  const node,
 
     else if (is_right_dependant)
     {
-        // return DiffExpFunction ();
+        return _MUL (dR, _MUL (_POW (cL, cR), _LN (cL)));
     }
 
     else
@@ -452,8 +484,6 @@ MakeDiffVariablesArray (const BinTree* const tree,
 
         strcpy (d_tree->var_table[i].var_name, tree->var_table[i].var_name);
     }
-
-    EnableDiffVariables (d_tree->root, d_tree);
 }
 
 static void

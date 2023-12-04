@@ -10,16 +10,15 @@ enum priority
     START_PRIORITY   = 0,
     ADD_SUB_PRIORITY = 1,
     MUL_DIV_PRIORITY = 2,
-    POW_PRIORITY     = 3,
-    UNARY_PRIORITY   = 4
+    UNARY_PRIORITY   = 3,
+    POW_PRIORITY     = 4
 };
 
 void
-PrintExpressionToLatex (const BinTree* const tree,
-                              FILE*    const latex_out);
+PrintExpressionToLatex (const BinTree* const tree);
 
 FILE*
-OpenLatexFile ();
+OpenLatexFile (BinTree* const tree);
 
 void
 CloseLatexFile (FILE* const latex_out);
@@ -27,5 +26,4 @@ CloseLatexFile (FILE* const latex_out);
 void
 PrintNodeToLatex (const BinTree_node* const node,
                   const BinTree*      const tree,
-                        FILE*         const latex_out,
                   const uint32_t             previous_priority);

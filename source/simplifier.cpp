@@ -1,5 +1,5 @@
 #include "../include/simplifier.h"
-
+#include "make_latex.h"
 static double
 SimplifyBinaryOperation (BinTree_node* const node,
                          BinTree*      const tree);
@@ -39,13 +39,25 @@ SimplifyExpression (BinTree* const tree)
 {
     BinTree_VerifyAndDump (tree);
 
+    fprintf (tree->latex_out, "Упростим выражение.\\\\");
+
     do
     {
         tree->simplify_status = NOT_SIMPLIFIED;
-        CollapseConstants        (tree->root, tree);
-        UtilizeNeutralOperations (tree->root, tree);
+
+        if (CollapseConstants (tree->root, tree))
+        {
+            PrintNodeToLatex  (tree->root, tree, START_PRIORITY);
+        }
+
+        if (UtilizeNeutralOperations (tree->root, tree))
+        {
+            PrintNodeToLatex  (tree->root, tree, START_PRIORITY);
+        }
     }
     while (tree->simplify_status == SIMPLIFIED);
+
+    fprintf (tree->latex_out, "Больше не упростить.\\\\\\\\");
 
     return tree;
 }
@@ -63,8 +75,21 @@ CollapseConstants (BinTree_node* const node,
 
     double total_value = BinTree_POISON;
 
-    if (node->left)  CollapseConstants (node->left,  tree);
-    if (node->right) CollapseConstants (node->right, tree);
+    if (node->left)
+    {
+        if (CollapseConstants (node->left, tree))
+        {
+            PrintNodeToLatex  (node->left, tree, START_PRIORITY);
+        }
+    }
+
+    if (node->right)
+    {
+        if (CollapseConstants (node->right, tree))
+        {
+            PrintNodeToLatex  (node->right, tree, START_PRIORITY);
+        }
+    }
 
     if (node->left && node->right)
     {
@@ -76,7 +101,7 @@ CollapseConstants (BinTree_node* const node,
         total_value = SimplifyUnaryOperation (node, tree);
     }
 
-    if (fabs (total_value - BinTree_POISON) > __DBL_EPSILON__)
+    if (fabs (total_value - BinTree_POISON) > WOLFRAM_EPS)
     {
         tree->simplify_status = SIMPLIFIED;
 
@@ -88,6 +113,8 @@ CollapseConstants (BinTree_node* const node,
 
         node->left  = nullptr;
         node->right = nullptr;
+
+        PrintNodeToLatex (node, tree, START_PRIORITY);
 
         return SIMPLIFIED;
     }
@@ -189,8 +216,21 @@ UtilizeNeutralOperations (BinTree_node* const node,
         return NOT_SIMPLIFIED;
     }
 
-    if (node->left)  UtilizeNeutralOperations (node->left,  tree);
-    if (node->right) UtilizeNeutralOperations (node->right, tree);
+    if (node->left)
+    {
+        if (UtilizeNeutralOperations (node->left, tree))
+        {
+            PrintNodeToLatex (node->left, tree, START_PRIORITY);
+        }
+    }
+
+    if (node->right)
+    {
+        if (UtilizeNeutralOperations (node->right, tree))
+        {
+            PrintNodeToLatex (node->right, tree, START_PRIORITY);
+        }
+    }
 
     if (IsOperation (node))
     {

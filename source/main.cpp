@@ -9,16 +9,14 @@ int32_t main (const int32_t /*argc*/, const char** argv)
 {
     BinTree tree = {};
     BINTREE_CTOR (&tree);
-    FILE* latex_out = OpenLatexFile ();
+    FILE* latex_out = OpenLatexFile (&tree);
 
 // check reading functions
     ReadTree (argv [1], &tree);
 
-    PrintExpressionToLatex (&tree, latex_out);
+    PrintExpressionToLatex (&tree);
 
     SimplifyExpression (&tree);
-
-    PrintExpressionToLatex (&tree, latex_out);
 
     BinTree_MakeTreeImage (&tree);
     printf (BinTree_OUTPUT_F "\n", Evaluate(&tree));
@@ -28,11 +26,11 @@ int32_t main (const int32_t /*argc*/, const char** argv)
     BINTREE_CTOR (&d_tree);
 
     DifferentiateExpression (&tree, &d_tree, "x");
-    PrintExpressionToLatex (&d_tree, latex_out);
+    PrintExpressionToLatex (&d_tree);
 
     SimplifyExpression (&d_tree);
 
-    PrintExpressionToLatex (&d_tree, latex_out);
+    PrintExpressionToLatex (&d_tree);
 
     BinTree_MakeTreeImage (&d_tree);
     printf (BinTree_OUTPUT_F "\n", Evaluate(&d_tree));
