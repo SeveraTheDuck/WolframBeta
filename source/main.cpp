@@ -16,6 +16,8 @@ int32_t main (const int32_t /* argc */, const char** argv)
 
     PrintExpressionToLatex (&tree);
 
+    MakeFunctionGraph (&tree, "x", -3.1415, 3.1415);
+
     SimplifyExpression (&tree);
 
     BinTree_MakeTreeImage (&tree);
@@ -29,6 +31,8 @@ int32_t main (const int32_t /* argc */, const char** argv)
     PrintExpressionToLatex  (&d_tree);
 
     SimplifyExpression (&d_tree);
+
+    MakeFunctionGraph (&d_tree, "x", -3.1415, 3.1415);
 
     PrintExpressionToLatex (&tree);
     PrintExpressionToLatex (&d_tree);

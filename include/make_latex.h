@@ -6,6 +6,13 @@
 
 const char LATEX_OUTPUT_FILE_NAME [] = "latex_output.txt";
 
+/* Without file extension to generate multiple graphs */
+const char GRAPH_OUTPUT_FILE_NAME [] = "gnuplot_test";
+const size_t GRAPH_NUMBER_MAX_LEN = 2;
+
+const size_t GRAPH_OUTPUT_FILE_NAME_LEN =
+    strlen (GRAPH_OUTPUT_FILE_NAME) + GRAPH_NUMBER_MAX_LEN + strlen (".gpi ");
+
 enum priority
 {
     START_PRIORITY   = 0,

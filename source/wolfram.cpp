@@ -63,9 +63,12 @@ DoOperation (const double       left_part,
              const op_code_type operation_number,
              BinTree* const     tree);
 
+static FILE*
+OpenGraphFile ();
+
 static var_index_type
-GetDiffVarIndex (const BinTree* const tree,
-                 const char*    const diff_var_name);
+GetVarIndex (const BinTree* const tree,
+             const char*    const var_name);
 
 static BinTree_node*
 DiffNode (const BinTree_node*  const node,
@@ -129,6 +132,63 @@ FillVariables (BinTree* const tree)
     }
 
     putchar ('\n');
+}
+
+void
+MakeFunctionGraph (      BinTree* const tree,
+                   const char*    const dep_var_name,
+                   const double         left_border,
+                   const double         right_border)
+{
+    if (!tree)
+    {
+        fprintf (stderr, "Invalid tree struct pointer.\n");
+        return;
+    }
+
+    var_index_type var_index = GetVarIndex (tree, dep_var_name);
+
+    FILE* graph_out = OpenGraphFile ();
+
+    fprintf (graph_out, "plot '-' u 1:2 w lines\n");
+
+    tree->var_table[var_index].var_value = left_border;
+
+    while (tree->var_table[var_index].var_value < right_border)
+    {
+        fprintf (graph_out, "%lg %lg\n",
+                 tree->var_table[var_index].var_value,
+                 EvaluateChecked (tree->root, tree));
+
+        tree->var_table[var_index].var_value += GRAPH_STEP;
+    }
+
+    fclose (graph_out);
+}
+
+static FILE*
+OpenGraphFile ()
+{
+    static size_t graph_number = 1;
+
+    char* graph_file_name =
+        (char*) calloc (GRAPH_OUTPUT_FILE_NAME_LEN, sizeof (char));
+
+    snprintf (graph_file_name, GRAPH_OUTPUT_FILE_NAME_LEN,
+              "%s%zd.gpi", GRAPH_OUTPUT_FILE_NAME, graph_number);
+
+    FILE* graph_out = fopen (graph_file_name, "wb");
+    if (!graph_out)
+    {
+        perror ("fopen() for graph_out failed");
+        return nullptr;
+    }
+
+    free (graph_file_name);
+
+    graph_number++;
+
+    return graph_out;
 }
 
 static double
@@ -226,7 +286,7 @@ DifferentiateExpression (      BinTree* const   tree,
     fprintf (tree->latex_out, "Дифференцируем выражение.\\\\");
 
     const var_index_type diff_var_index =
-        GetDiffVarIndex (tree, diff_var_name);
+        GetVarIndex (tree, diff_var_name);
 
     /* no variable found, everything is const */
     if (diff_var_index == VAR_INDEX_POISON)
@@ -251,26 +311,21 @@ DifferentiateExpression (      BinTree* const   tree,
 }
 
 static var_index_type
-GetDiffVarIndex (const BinTree* const tree,
-                 const char*    const diff_var_name)
+GetVarIndex (const BinTree* const tree,
+             const char*    const var_name)
 {
     assert (tree);
 
-    if (!diff_var_name)
+    if (!var_name)
     {
-        fprintf (stderr, "Warning! Differentiating by no variable.\n"
-                         "All expressions will be considered as const.\n");
         return VAR_INDEX_POISON;
     }
 
     for (var_index_type i = 0; i < tree->var_number; ++i)
     {
-        if (strcmp (diff_var_name, tree->var_table [i].var_name) == 0)
+        if (strcmp (var_name, tree->var_table [i].var_name) == 0)
             return i;
     }
-
-    // fprintf (stderr, "Warning! Differentiating by unknown variable.\n"
-    //                  "All expressions will be considered as const.\n");
 
     return VAR_INDEX_POISON;
 }

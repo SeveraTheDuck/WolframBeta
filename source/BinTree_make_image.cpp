@@ -102,7 +102,7 @@ BinTree_PrintNodes (const BinTree_node* const node,
 
         case OPERATION:
         {
-            if (node->data.data_value.op_code < NUM_OF_OP)
+            if (node->data .data_value .op_code < (int8_t) NUM_OF_OP)
             {
                 fputs (operations_array [node->data.data_value.op_code],
                        image_file);
