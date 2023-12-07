@@ -233,6 +233,7 @@ DifferentiateExpression (      BinTree* const   tree,
     {
         d_tree->root = BinTree_CtorNode (NUMBER, 0, nullptr,
                                          nullptr, nullptr, d_tree);
+        d_tree->latex_out = tree->latex_out;
 
         return d_tree;
     }

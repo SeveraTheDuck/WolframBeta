@@ -1,6 +1,6 @@
 #include "../include/make_latex.h"
 
-const char* MATH_PHRASES_ARRAY [] =
+static const char* MATH_PHRASES_ARRAY [] =
     {"Легко заметить, что:",
      "Следующий факт будем использовать без доказательства:",
      "Ёжику очевидно, что:",
@@ -69,6 +69,8 @@ OpenLatexFile (BinTree* const tree)
         perror ("fopen() for latex_out failed");
         return nullptr;
     }
+
+    srand ((uint32_t) time (nullptr));
 
     fputs ("\\documentclass{article}\n"
            "\\usepackage{graphicx} % Required for inserting images\n"
@@ -249,13 +251,15 @@ GetOperationPriority (const op_code_type op_code)
     switch (op_code)
     {
         case ADD:
-            return ADD_SUB_PRIORITY;
+            [[fallthrough]];
         case SUB:
             return ADD_SUB_PRIORITY;
+
         case MUL:
-            return MUL_DIV_PRIORITY;
+            [[fallthrough]];
         case DIV:
             return MUL_DIV_PRIORITY;
+
         case POW:
             return POW_PRIORITY;
 

@@ -2,8 +2,8 @@
 
 #include "wolfram_config.h"
 
-typedef uint8_t op_code_type;
-typedef  int8_t var_index_type;
+typedef int8_t op_code_type;
+typedef int8_t var_index_type;
 
 union data_value
 {

@@ -1,54 +1,78 @@
 #include "read_equation.h"
+#include "List_commands.h"
 
-// FileOpenLib remake
+/*
+ * Here is the description of grammar rules of the code.
+ *
+ * G stands for GetGrammar(),
+ * E stands for GetExpression(),
+ * T stands for GetTerm(),
+ * U stands for GetUnary(),
+ * P stands for GetPrimary(),
+ * V stands for GetValue(),
+ * N stands for GetNumber(),
+ * R stands for GetVariable().
+ *
+ * G ::= E '\0'
+ * E ::= T {[+ -] T}*
+ * T ::= U {[* / ^] U}*
+ * U ::= {[operations_array] P} | P
+ * P ::= '(' E ')' | V
+ * V ::= N | R
+ * N ::= [0 - 9]+ Как обозначить единственность точки? [0 - 9]*
+ * R ::= {[A - Z] | [a - z]} {[A - Z] | [a - z] | [0 - 9]}*
+ */
 
-#define _CONST(value) BinTree_CtorNode (NUMBER, value, nullptr, nullptr, nullptr, tree)
-#define _ADD(left, right) BinTree_CtorNode (OPERATION, ADD, left, right, nullptr, tree)
-#define _SUB(left, right) BinTree_CtorNode (OPERATION, SUB, left, right, nullptr, tree)
-#define _MUL(left, right) BinTree_CtorNode (OPERATION, MUL, left, right, nullptr, tree)
-#define _DIV(left, right) BinTree_CtorNode (OPERATION, DIV, left, right, nullptr, tree)
-#define _POW(left, right) BinTree_CtorNode (OPERATION, POW, left, right, nullptr, tree)
-#define _SIN(right)       BinTree_CtorNode (OPERATION, SIN, nullptr, right, nullptr, tree)
-#define _COS(right)       BinTree_CtorNode (OPERATION, COS, nullptr, right, nullptr, tree)
-#define _LN(right)        BinTree_CtorNode (OPERATION, LN,  nullptr, right, nullptr, tree)
+static void
+SeparateToTokens (const file_input* const input_parsed,
+                        List*       const tokens_list);
+
+static void
+GetTokenData (const file_input* const input_parsed,
+                    size_t*     const index,
+                    token*      const cur_token);
 
 static BinTree_node*
-GetExpression (const char*          buffer,
-                     size_t*  const index,
-                     BinTree* const tree);
-
-static BinTree_node*
-GetTerm (const char*          buffer,
-               size_t*  const index,
-               BinTree* const tree);
-
-static BinTree_node*
-GetUnary (const char*          buffer,
-                size_t*  const index,
-                BinTree* const tree);
-
-static BinTree_node*
-GetPrimary (const char*          buffer,
-                  size_t*  const index,
+GetGrammar (const List*    const tokens_list,
+                  size_t*  const token_index,
                   BinTree* const tree);
 
 static BinTree_node*
-GetValue (const char*          buffer,
-                size_t*  const index,
-                BinTree* const tree);
+GetExpression (const List_data_type* const tokens_array,
+                     size_t*         const token_index,
+                     BinTree*        const tree);
 
 static BinTree_node*
-GetVariable (const char*          buffer,
-                   size_t*  const index,
-                   BinTree* const tree);
+GetTerm (const List_data_type* const tokens_array,
+               size_t*         const token_index,
+               BinTree*        const tree);
 
 static BinTree_node*
-GetNumber (const char*          buffer,
-                 size_t*  const index,
-                 BinTree* const tree);
+GetUnary (const List_data_type* const tokens_array,
+                size_t*         const token_index,
+                BinTree*        const tree);
+
+static BinTree_node*
+GetPrimary (const List_data_type* const tokens_array,
+                  size_t*         const token_index,
+                  BinTree*        const tree);
+
+static BinTree_node*
+GetValue (const List_data_type* const tokens_array,
+                size_t*         const token_index,
+                BinTree*        const tree);
+
+static BinTree_node*
+GetVariable (const List_data_type* const tokens_array,
+                   size_t*         const token_index,
+                   BinTree*        const tree);
 
 static void
-syn_assert (const bool expression);
+syn_assert_func (const size_t n_line,
+                 const bool expression);
+
+#define syn_assert(expression)              \
+    syn_assert_func (__LINE__, expression);
 
 BinTree*
 ReadTree (const char*    const input_file_name,
@@ -60,232 +84,343 @@ ReadTree (const char*    const input_file_name,
         return nullptr;
     }
 
-    file_input input_parced = {};
-    GetFileInput (input_file_name, &input_parced, NOT_PARTED);
+    file_input input_parsed = {};
+    GetFileInput (input_file_name, &input_parsed, NOT_PARTED);
+    input_parsed.buffer [input_parsed.buffer_size - 1] = '\0';
 
-    if (input_parced.buffer_size == 0) return nullptr;
+    if (input_parsed.buffer_size == 0) return nullptr;
 
-    size_t index = 0;
-    tree->root = GetExpression (input_parced.buffer, &index, tree);
+    List tokens_list = {};
+    List_Ctor (&tokens_list);
+
+    SeparateToTokens (&input_parsed, &tokens_list);
+
+    FreeFileInput    (&input_parsed);
+
+    size_t token_index = 0;
+    tree->root = GetGrammar (&tokens_list, &token_index, tree);
+
+    /* null-termination check */
+    syn_assert (tokens_list.list_data [token_index]
+                .token_data_type == OPERATION &&
+                tokens_list.list_data [token_index]
+                .data.op_code == NULL_TERMINATE);
 
     SetParents (nullptr, tree->root);
 
-    fprintf (tree->latex_out, "$$%s$$\n", input_parced.buffer);
-
-    FreeFileInput (&input_parced);
+    List_Dtor (&tokens_list);
 
     return tree;
 }
 
-static BinTree_node*
-GetExpression (const char*          buffer,
-                     size_t*  const index,
-                     BinTree* const tree)
+static void
+SeparateToTokens (const file_input* const input_parsed,
+                        List*       const tokens_list)
 {
-    assert (buffer);
-    assert (index);
-    assert (tree);
+    assert (input_parsed->buffer);
+    assert (tokens_list);
 
-    BinTree_node* left_value  = GetTerm (buffer, index, tree);
-    BinTree_node* right_value = nullptr;
-    BinTree_node* new_node    = nullptr;
+    size_t index = 0;
 
-    op_code_type operation = 0;
+    token cur_token = {.token_data_type = NUMBER,
+                       .data.num_value  = BinTree_POISON};
 
-    while (buffer [*index] == operations_array [ADD] [0] ||
-           buffer [*index] == operations_array [SUB] [0])
+    while (index < input_parsed->buffer_size)
     {
-        if (strncmp (buffer + *index, operations_array [ADD],
-                     strlen (operations_array [ADD])) == 0)
+        if (input_parsed->buffer [index] == ' ')
         {
-            operation = ADD;
-        }
-        else
-        {
-            operation = SUB;
+            index++;
+            continue;
         }
 
-        (*index)++;
-
-        right_value = GetTerm (buffer, index, tree);
-
-        switch (operation)
+        switch (input_parsed->buffer[index])
         {
-            case ADD:
-                new_node = _ADD (left_value, right_value);
+            case '(':
+                index++;
+                cur_token.token_data_type = OPERATION;
+                cur_token.data.op_code    = OPEN_PARENTHESIS;
                 break;
 
-            case SUB:
-                new_node = _SUB (left_value, right_value);
+            case ')':
+                index++;
+                cur_token.token_data_type = OPERATION;
+                cur_token.data.op_code    = CLOSE_PARENTHESIS;
+                break;
+
+            case '\0':
+                index++;
+                cur_token.token_data_type = OPERATION;
+                cur_token.data.op_code    = NULL_TERMINATE;
                 break;
 
             default:
-                fprintf (stderr, "Not add or sub op_code\n");
-                abort ();
+                GetTokenData (input_parsed, &index, &cur_token);
                 break;
         }
 
-        left_value = new_node;
+        List_PushBack (&cur_token, tokens_list);
     }
-
-    return left_value;
 }
 
-static BinTree_node*
-GetTerm (const char*          buffer,
-               size_t*  const index,
-               BinTree* const tree)
+static void
+GetTokenData (const file_input* const input_parsed,
+                    size_t*     const index,
+                    token*      const cur_token)
 {
-    assert (buffer);
+    assert (input_parsed);
     assert (index);
-    assert (tree);
+    assert (cur_token);
 
-    BinTree_node* left_value  = GetUnary (buffer, index, tree);
-    BinTree_node* right_value = nullptr;
-    BinTree_node* new_node    = nullptr;
-
-    op_code_type operation = 0;
-
-    while (buffer [*index] == operations_array [MUL] [0] ||
-           buffer [*index] == operations_array [DIV] [0] ||
-           buffer [*index] == operations_array [POW] [0])
+    switch (input_parsed->buffer [*index])
     {
-        if (strncmp (buffer + *index, operations_array [MUL],
-                     strlen (operations_array [MUL])) == 0)
-        {
-            operation = MUL;
-        }
+        case '+':
+            (*index)++;
+            cur_token->token_data_type = OPERATION;
+            cur_token->data.op_code    = ADD;
+            return;
 
-        else if (strncmp (buffer + *index, operations_array [DIV],
-                          strlen (operations_array [DIV])) == 0)
-        {
-            operation = DIV;
-        }
+        case '-':
+            (*index)++;
+            cur_token->token_data_type = OPERATION;
+            cur_token->data.op_code    = SUB;
+            return;
 
-        else if (strncmp (buffer + *index, operations_array [POW],
-                          strlen (operations_array [POW])) == 0)
-        {
-            operation = POW;
-        }
+        case '*':
+            (*index)++;
+            cur_token->token_data_type = OPERATION;
+            cur_token->data.op_code    = MUL;
+            return;
 
-        else
-        {
-            syn_assert (0);
-        }
+        case '/':
+            (*index)++;
+            cur_token->token_data_type = OPERATION;
+            cur_token->data.op_code    = DIV;
+            return;
 
-        (*index)++;
-
-        right_value = GetUnary (buffer, index, tree);
-
-        switch (operation)
-        {
-            case MUL:
-                new_node = _MUL (left_value, right_value);
-                break;
-
-            case DIV:
-                new_node = _DIV (left_value, right_value);
-                break;
-
-            case POW:
-                new_node = _POW (left_value, right_value);
-                break;
-
-            default:
-                fprintf (stderr, "Not mul, div or pow op_code\n");
-                abort ();
-                break;
-        }
-
-        left_value = new_node;
+        case '^':
+            (*index)++;
+            cur_token->token_data_type = OPERATION;
+            cur_token->data.op_code    = POW;
+            return;
     }
 
-    return left_value;
-}
-
-static BinTree_node*
-GetUnary (const char*          buffer,
-                size_t*  const index,
-                BinTree* const tree)
-{
-    assert (buffer);
-    assert (index);
-    assert (tree);
-
-    for (size_t op_code = NUM_OF_BIN_OP;
-                op_code < NUM_OF_OP;
-                op_code++)
+    if (isnumber (input_parsed->buffer [*index]))
     {
-        if (strncasecmp (buffer + *index, operations_array [op_code],
-                                  strlen (operations_array [op_code])) == 0)
-        {
-            *index += strlen (operations_array [op_code]);
+        int32_t n_read_elem = 0;
 
-            BinTree_node* right_value =
-                GetPrimary (buffer, index, tree);
+        sscanf (input_parsed->buffer + *index, "%lg%n",
+                &cur_token->data.num_value, &n_read_elem);
 
-            return BinTree_CtorNode (OPERATION, op_code, nullptr,
-                                     right_value, nullptr, tree);
-        }
-    }
+        *index += (size_t) n_read_elem;
 
-    return GetPrimary (buffer, index, tree);
-}
-
-static BinTree_node*
-GetPrimary (const char*          buffer,
-                  size_t*  const index,
-                  BinTree* const tree)
-{
-    assert (buffer);
-    assert (index);
-    assert (tree);
-
-    BinTree_node* node = nullptr;
-
-    if (buffer [*index] == '(')
-    {
-        (*index)++;
-
-        node = GetExpression (buffer, index, tree);
-
-        syn_assert (buffer [*index] == ')');
-
-        (*index)++;
-
-        return node;
-    }
-
-    return GetValue (buffer, index, tree);
-}
-
-static BinTree_node*
-GetValue (const char*          buffer,
-                size_t*  const index,
-                BinTree* const tree)
-{
-    assert (buffer);
-    assert (index);
-    assert (tree);
-
-    if (isdigit (buffer [*index]))
-    {
-        return GetNumber (buffer, index, tree);
+        cur_token->token_data_type = NUMBER;
     }
 
     else
     {
-        return GetVariable (buffer, index, tree);
+        size_t str_length = 0;
+
+        while (isalnum (input_parsed->buffer [*index]))
+        {
+            cur_token->data.var_name [str_length] =
+                input_parsed->buffer [*index];
+
+            (*index)++;
+            str_length++;
+        }
+        cur_token->data.var_name [str_length] = '\0';
+
+        /* start count from first unary operation */
+        for (size_t i = NUM_OF_BIN_OP; i < NUM_OF_OP; ++i)
+        {
+            if (strcasecmp (cur_token->data.var_name,
+                            operations_array [i]) == 0)
+            {
+                cur_token->token_data_type = OPERATION;
+                cur_token->data.op_code    = (op_code_type) i;
+
+                return;
+            }
+        }
+
+        cur_token->token_data_type = VARIABLE;
     }
 }
 
 static BinTree_node*
-GetVariable (const char*          buffer,
-                   size_t*  const index,
-                   BinTree* const tree)
+GetGrammar (const List*    const tokens_list,
+                  size_t*  const token_index,
+                  BinTree* const tree)
 {
-    assert (buffer);
-    assert (index);
+    assert (tokens_list);
+    assert (token_index);
+    assert (tree);
+
+    /* token_index start value not zero because of dummy_elem in list */
+    *token_index = 1;
+    return GetExpression (tokens_list->list_data, token_index, tree);
+}
+
+static BinTree_node*
+GetExpression (const List_data_type* const tokens_array,
+                     size_t*         const token_index,
+                     BinTree*        const tree)
+{
+    assert (tokens_array);
+    assert (token_index);
+    assert (tree);
+
+    BinTree_node* left_value  = GetTerm (tokens_array, token_index, tree);
+    BinTree_node* right_value = nullptr;
+    BinTree_node* new_node    = nullptr;
+
+    while (tokens_array [*token_index] .token_data_type == OPERATION &&
+          (tokens_array [*token_index] .data .op_code   == ADD ||
+           tokens_array [*token_index] .data .op_code   == SUB))
+    {
+        op_code_type op_code =
+            tokens_array [(*token_index)++] .data .op_code;
+
+        right_value = GetTerm (tokens_array, token_index, tree);
+
+        new_node = BinTree_CtorNode (OPERATION, op_code, left_value,
+                                     right_value, nullptr, tree);
+
+        left_value = new_node;
+    }
+
+    return left_value;
+}
+
+static BinTree_node*
+GetTerm (const List_data_type* const tokens_array,
+               size_t*         const token_index,
+               BinTree*        const tree)
+{
+    assert (tokens_array);
+    assert (token_index);
+    assert (tree);
+
+    BinTree_node* left_value  = GetUnary (tokens_array, token_index, tree);
+    BinTree_node* right_value = nullptr;
+    BinTree_node* new_node    = nullptr;
+
+    while (tokens_array [*token_index] .token_data_type == OPERATION &&
+          (tokens_array [*token_index] .data .op_code   == MUL ||
+           tokens_array [*token_index] .data .op_code   == DIV ||
+           tokens_array [*token_index] .data .op_code   == POW))
+    {
+        op_code_type op_code =
+            tokens_array [(*token_index)++] .data .op_code;
+
+        right_value = GetUnary (tokens_array, token_index, tree);
+
+        new_node = BinTree_CtorNode (OPERATION, op_code, left_value,
+                                     right_value, nullptr, tree);
+
+        left_value = new_node;
+    }
+
+    return left_value;
+}
+
+static BinTree_node*
+GetUnary (const List_data_type* const tokens_array,
+                size_t*         const token_index,
+                BinTree*        const tree)
+{
+    assert (tokens_array);
+    assert (token_index);
+    assert (tree);
+
+    /*
+     * op_code >= NUM_OF_BIN_OP because bin
+     * operations have already been checked
+     */
+
+    if (tokens_array [*token_index] .token_data_type == OPERATION &&
+        tokens_array [*token_index] .data .op_code >= NUM_OF_BIN_OP)
+    {
+        op_code_type op_code =
+            tokens_array [(*token_index)++] .data .op_code;
+
+        BinTree_node* right_value =
+            GetPrimary (tokens_array, token_index, tree);
+
+        return BinTree_CtorNode (OPERATION, op_code, nullptr,
+                                 right_value, nullptr, tree);
+    }
+
+    return GetPrimary (tokens_array, token_index, tree);
+}
+
+static BinTree_node*
+GetPrimary (const List_data_type* const tokens_array,
+                  size_t*         const token_index,
+                  BinTree*        const tree)
+{
+    assert (tokens_array);
+    assert (token_index);
+    assert (tree);
+
+    BinTree_node* node = nullptr;
+
+    if (tokens_array [*token_index] .token_data_type == OPERATION &&
+        tokens_array [*token_index] .data .op_code   == OPEN_PARENTHESIS)
+    {
+        (*token_index)++;
+
+        node = GetExpression (tokens_array, token_index, tree);
+
+        syn_assert
+        (
+            tokens_array [*token_index] .token_data_type == OPERATION &&
+            tokens_array [*token_index] .data .op_code   == CLOSE_PARENTHESIS
+        );
+
+        (*token_index)++;
+
+        return node;
+    }
+
+    return GetValue (tokens_array, token_index, tree);
+}
+
+static BinTree_node*
+GetValue (const List_data_type* const tokens_array,
+                size_t*         const token_index,
+                BinTree*        const tree)
+{
+    assert (tokens_array);
+    assert (token_index);
+    assert (tree);
+
+    if (tokens_array [*token_index] .token_data_type == NUMBER)
+    {
+        return BinTree_CtorNode (NUMBER, tokens_array [(*token_index)++]
+                                 .data .num_value, nullptr,
+                                 nullptr, nullptr, tree);
+    }
+
+    else if (tokens_array [*token_index] .token_data_type == VARIABLE)
+    {
+        return GetVariable (tokens_array, token_index, tree);
+    }
+
+    else
+    {
+        syn_assert (NO_TYPE);
+        return nullptr;
+    }
+}
+
+static BinTree_node*
+GetVariable (const List_data_type* const tokens_array,
+                   size_t*         const token_index,
+                   BinTree*        const tree)
+{
+    assert (tokens_array);
+    assert (token_index);
     assert (tree);
 
     char* const var_name =
@@ -296,17 +431,11 @@ GetVariable (const char*          buffer,
         return nullptr;
     }
 
-    size_t var_name_index = 0;
-
-    while (isalnum (buffer [*index]))
-    {
-        var_name [var_name_index++] = buffer [*index];
-        (*index)++;
-    }
+    strcpy (var_name, tokens_array [(*token_index)++] .data .var_name);
 
     for (var_index_type i = 0; i < tree->var_number; ++i)
     {
-        if (strcmp (var_name, tree->var_table[i].var_name) == 0)
+        if (strcmp (var_name, tree->var_table [i] .var_name) == 0)
         {
             return BinTree_CtorNode (VARIABLE, i, nullptr,
                                      nullptr, nullptr, tree);
@@ -327,66 +456,15 @@ GetVariable (const char*          buffer,
                              nullptr, nullptr, nullptr, tree);
 }
 
-static BinTree_node*
-GetNumber (const char*          buffer,
-                 size_t*  const index,
-                 BinTree* const tree)
-{
-    assert (buffer);
-    assert (index);
-    assert (tree);
-
-    int32_t  int_part       = 0;
-    double   float_part     = 0;
-    uint32_t n_float_digits = 0;
-
-    bool after_dot   = false;
-    number_sign sign = POSITIVE;
-
-    const size_t old_index = *index;
-
-    if (buffer [*index] == '-')
-    {
-        sign = NEGATIVE;
-    }
-
-    while (('0' <= buffer [*index] && buffer [*index] <= '9') ||
-                   buffer [*index] == '.')
-    {
-        if (buffer [*index] == '.' && !after_dot)
-        {
-            after_dot = true;
-        }
-
-        else if (!after_dot)
-        {
-            int_part = int_part * 10 + buffer [*index] - '0';
-        }
-
-        else
-        {
-            n_float_digits++;
-            float_part += (buffer [*index] - '0' ) /
-                          pow (10, n_float_digits);
-        }
-
-        (*index)++;
-    }
-
-    syn_assert (*index > old_index);
-    return _CONST (sign * (int_part + float_part));
-}
-
 static void
-syn_assert (const bool expression)
+syn_assert_func (const size_t n_line,
+                 const bool expression)
 {
-    if (!expression) abort ();
+    if (!expression)
+    {
+        fprintf (stderr, "Aborting line %zd\n", n_line);
+        abort ();
+    }
 }
 
-#undef _ADD
-#undef _SUB
-#undef _MUL
-#undef _DIV
-#undef _POW
-#undef _SIN
-#undef _COS
+#undef syn_assert

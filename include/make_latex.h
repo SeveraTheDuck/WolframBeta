@@ -1,5 +1,6 @@
 #pragma once
 
+#include <time.h>
 #include "BinTree_struct.h"
 #include "wolfram.h"
 

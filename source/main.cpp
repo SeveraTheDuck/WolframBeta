@@ -5,7 +5,7 @@
 #include "make_latex.h"
 #include "simplifier.h"
 
-int32_t main (const int32_t /*argc*/, const char** argv)
+int32_t main (const int32_t /* argc */, const char** argv)
 {
     BinTree tree = {};
     BINTREE_CTOR (&tree);
@@ -26,7 +26,7 @@ int32_t main (const int32_t /*argc*/, const char** argv)
     BINTREE_CTOR (&d_tree);
 
     DifferentiateExpression (&tree, &d_tree, "x");
-    PrintExpressionToLatex (&d_tree);
+    PrintExpressionToLatex  (&d_tree);
 
     SimplifyExpression (&d_tree);
 
